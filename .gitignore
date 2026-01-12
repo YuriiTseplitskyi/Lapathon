@@ -1,0 +1,6 @@
+.env
+.venv/
+__pycache__/
+nabu_data/
+*.zip
+*.pdf
