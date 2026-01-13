@@ -46,7 +46,7 @@ class AgentConfig:
         return cls(
             model_name=os.getenv("MODEL_NAME", "lapa-function-calling"),
             base_url=os.getenv("BASE_URL", ""),
-            lapa_api_key=os.getenv("API_KEY", ""),
+            lapa_api_key=os.getenv("LAPA_API_KEY", ""),
             temperature=float(os.getenv("MODEL_TEMPERATURE", "0") or 0),
             openai_model_name=os.getenv("OPENAI_MODEL_NAME") or None,
             openai_api_key=os.getenv("OPENAI_API_KEY") or None,

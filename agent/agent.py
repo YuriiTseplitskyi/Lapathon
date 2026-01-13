@@ -6,11 +6,9 @@ import re
 from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import (
-    AIMessage,
     AnyMessage,
     HumanMessage,
     SystemMessage,
-    ToolMessage,
 )
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
@@ -25,13 +23,15 @@ from agent.tools import make_search_graph_db_tool
 TOOL_CALL_RE = re.compile(r"(?s)<tool_call>\s*(\{.*?\})\s*</tool_call>")
 
 
-def _maybe_parse_custom_tool_text(text: str) -> Optional[Dict[str, Any]]:
+def parse_tool_call(message: AnyMessage) -> Optional[Dict[str, Any]]:
     """
-    Fallback parser for the legacy inline <tool_call>{...}</tool_call> format.
+    Parse tool call from <tool_call>{...}</tool_call> XML format in message content.
     """
-    if not text:
+    content = getattr(message, "content", "")
+    if not isinstance(content, str) or not content:
         return None
-    match = TOOL_CALL_RE.search(text)
+
+    match = TOOL_CALL_RE.search(content)
     if not match:
         return None
 
@@ -61,26 +61,6 @@ def _maybe_parse_custom_tool_text(text: str) -> Optional[Dict[str, Any]]:
     return payload
 
 
-def extract_tool_call_from_text(message: AnyMessage) -> Optional[Dict[str, Any]]:
-    """
-    Support both native tool-calls (AIMessage.tool_calls) and the legacy inline format.
-    """
-    if isinstance(message, AIMessage) and message.tool_calls:
-        call = message.tool_calls[0]
-        args = call.get("args") or call.get("arguments") or {}
-        if not isinstance(args, dict):
-            return None
-        query = args.get("query")
-        if not isinstance(query, str) or not query.strip():
-            return None
-        return {"id": call.get("id") or "tool-call-0", "name": call.get("name"), "arguments": args}
-
-    content = getattr(message, "content", "")
-    if isinstance(content, str):
-        return _maybe_parse_custom_tool_text(content)
-    return None
-
-
 class AgentState(TypedDict):
     messages: Annotated[List[AnyMessage], add_messages]
     pending_tool: Optional[Dict[str, Any]]
@@ -105,20 +85,20 @@ class Agent:
         self.llm = ChatOpenAI(
             model=cfg.model_name,
             base_url=cfg.base_url,
-            api_key=cfg.api_key,
+            api_key=cfg.lapa_api_key,
             temperature=cfg.temperature,
         ).bind_tools([self.tool])
 
         self.graph = self._build_graph()
 
     def _build_graph(self):
-        def assistant_node(state: AgentState) -> Dict[str, Any]:
+        def llm_node(state: AgentState) -> Dict[str, Any]:
             resp = self.llm.invoke(state["messages"])
             return {"messages": [resp]}
 
         def parse_tool_call_node(state: AgentState) -> Dict[str, Any]:
             last = state["messages"][-1]
-            tc = extract_tool_call_from_text(last)
+            tc = parse_tool_call(last)
             return {"pending_tool": tc}
 
         def run_tool_node(state: AgentState) -> Dict[str, Any]:
@@ -131,9 +111,12 @@ class Agent:
 
             tool_result_msg = HumanMessage(
                 content=(
-                    "TOOL RESULT (search_graph_db):\n"
+                    "Результат:\n"
                     f"{tool_out}\n\n"
-                    "Use this tool result to answer the request."
+                    "Використай отримані дані для формування відповіді користувачу.\n"
+                    "Якщо результат виклику інструмента вказує на некоректний запит, проаналізуй цей і виконай повторний запит до графа з випривленням помилки.\n"
+                    "Якщо результат інструменту - порожній ([]), значить попередній результат некоректний. Повтори запит з виправленням помилки.\n"
+                    "Якщо вирішив повторити запит, дотримуйся правил виклику інструмента та написання Cypher-запитів, зазначених вище."
                 )
             )
             return {"messages": [tool_result_msg], "pending_tool": None}
@@ -142,16 +125,16 @@ class Agent:
             return "run_tool" if state.get("pending_tool") else END
 
         graph = StateGraph(AgentState)
-        graph.add_node("assistant", assistant_node)
+        graph.add_node("llm", llm_node)
         graph.add_node("parse_tool_call", parse_tool_call_node)
         graph.add_node("run_tool", run_tool_node)
 
-        graph.add_edge(START, "assistant")
-        graph.add_edge("assistant", "parse_tool_call")
+        graph.add_edge(START, "llm")
+        graph.add_edge("llm", "parse_tool_call")
         graph.add_conditional_edges(
             "parse_tool_call", route_after_parse, {"run_tool": "run_tool", END: END}
         )
-        graph.add_edge("run_tool", "assistant")  # loop back; assistant may decide to call tool again
+        graph.add_edge("run_tool", "llm")
 
         return graph.compile()
 
