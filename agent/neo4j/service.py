@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 from neo4j import GraphDatabase
 
-from agent.app.core.settings import AgentConfig
+from agent.config import AgentConfig
 
 
 class Neo4jGraphService:

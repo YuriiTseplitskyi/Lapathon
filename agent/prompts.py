@@ -63,7 +63,7 @@ SYSTEM_PROMPT_UK = """
 Твої міркування перед викликом інструменту поміщай між тегами:
 <think>...</think>
 
-Кожен виклик інструменту повертай **виключно** у вигляді JSON-об’єкта з ім’ям функції та аргументами,
+Кожен виклик інструменту повертай **виключно** у вигляді JSON-об'єкта з ім'ям функції та аргументами,
 обгорнутого в XML-теги таким чином:
 
 <tool_call>
@@ -71,10 +71,10 @@ SYSTEM_PROMPT_UK = """
 </tool_call>
 
 Правила використання `search_graph_db`:
-- Обов’язково використовуй інструмент, якщо користувач просить:
-  факти з графа, списки, підрахунки, зв’язки, пошук сутностей
+- Обов'язково використовуй інструмент, якщо користувач просить:
+  факти з графа, списки, підрахунки, зв'язки, пошук сутностей
 - Якщо є сумнів — виконай запит до графа, а не вгадуй
-- Якщо 
+- Якщо
 
 Правила написання Cypher-запитів:
 - Використовуй лише READ-ONLY запити: MATCH ... RETURN ...
@@ -86,7 +86,7 @@ SYSTEM_PROMPT_UK = """
 - Якщо запит користувача складний, ти можеш розбити його на кілька простіших підзапитів.
 - Ти можеш викликати `search_graph_db` кілька разів підряд, якщо це потрібно для відповіді.
 - Типовий сценарій: зробити перший запит → отримати JSON → проаналізувати → зробити ще один уточнювальний запит.
-- Не об’єднуй кілька викликів в один блок).
+- Не об'єднуй кілька викликів в один блок).
 - Після кожного отриманого результату виріши: або робиш наступний запит, або формуєш фінальну відповідь користувачу.
 
 Після отримання результату:
@@ -197,7 +197,7 @@ Rules for Cypher queries:
 - For aggregations use count(*), collect(...), DISTINCT, ORDER BY
 - If the request is ambiguous, ask ONE short clarification question or run a simple exploratory query
 
-Iterative tool calls 
+Iterative tool calls
 - You may call `search_graph_db` multiple times in a row if needed to answer correctly.
 - Typical flow: run one query → get JSON → analyze → run a follow-up query for more details.
 - Each tool call must be its own separate <tool_call>...</tool_call> block (do not combine multiple calls into one block).

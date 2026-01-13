@@ -4,3 +4,4 @@ __pycache__/
 nabu_data/
 *.zip
 *.pdf
+.claude

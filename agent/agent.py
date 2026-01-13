@@ -17,9 +17,9 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from typing_extensions import Annotated, TypedDict
 
-from agent.app.core.settings import AgentConfig, configure_langsmith_env
-from agent.app.services.agent.prompts import SYSTEM_PROMPT_EN, SYSTEM_PROMPT_UK
-from agent.app.tools.search_graph_db import make_search_graph_db_tool
+from agent.config import AgentConfig, configure_langsmith_env
+from agent.prompts import SYSTEM_PROMPT_EN, SYSTEM_PROMPT_UK
+from agent.tools import make_search_graph_db_tool
 
 
 TOOL_CALL_RE = re.compile(r"(?s)<tool_call>\s*(\{.*?\})\s*</tool_call>")

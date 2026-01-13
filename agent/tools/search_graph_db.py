@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from langchain_core.tools import tool
 
-from agent.app.core.settings import AgentConfig
-from agent.app.services.graph.db import Neo4jGraphService
+from agent.config import AgentConfig
+from agent.neo4j import Neo4jGraphService
 
 
 def make_search_graph_db_tool(cfg: AgentConfig):
