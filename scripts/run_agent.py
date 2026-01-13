@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agent import Agent, AgentConfig
 
@@ -17,6 +21,8 @@ def main() -> None:
 
     cfg = AgentConfig.from_env()
     agent = Agent(cfg)
+
+    print(agent.graph.get_graph().draw_ascii())
 
     answer = agent.invoke(args.prompt)
     print(answer)
