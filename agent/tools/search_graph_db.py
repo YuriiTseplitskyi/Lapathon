@@ -1,23 +1,64 @@
 from __future__ import annotations
 
-from langchain_core.tools import tool
+import json
+from typing import Any, Dict, List
+
+from neo4j import GraphDatabase
 
 from agent.config import AgentConfig
-from agent.neo4j import Neo4jGraphService
 
+from agents import function_tool
 
-def make_search_graph_db_tool(cfg: AgentConfig):
-    service = Neo4jGraphService(cfg)
+def search_graph_db(query: str, cfg: AgentConfig) -> str:
+    """
+    Execute a Cypher query against Neo4j and return JSON results.
 
-    @tool("search_graph_db")
-    def search_graph_db(query: str) -> str:
+    Args:
+        query: Cypher query to execute against the database.
+    """
+    q = (query or "").strip()
+    if not q:
+        return json.dumps({"error": "Empty query"}, ensure_ascii=False)
+
+    if not cfg.allow_write_queries:
+        blocked = ("CREATE", "MERGE", "DELETE", "SET", "DROP", "CALL", "LOAD CSV", "APOC")
+        upper = q.upper()
+        if any(tok in upper for tok in blocked):
+            return json.dumps(
+                {
+                    "error": "Write/procedure queries are disabled.",
+                    "hint": "Use MATCH/RETURN (read-only) queries.",
+                },
+                ensure_ascii=False,
+            )
+
+    try:
+        auth = (cfg.neo4j_user, cfg.neo4j_password)
+        with GraphDatabase.driver(cfg.neo4j_uri, auth=auth) as driver:
+            kwargs: Dict[str, Any] = {}
+            if cfg.neo4j_database:
+                kwargs["database"] = cfg.neo4j_database
+
+            with driver.session(**kwargs) as session:
+                result = session.run(q)
+                records: List[Dict[str, Any]] = [r.data() for r in result]
+                return json.dumps(records, ensure_ascii=False)
+    except Exception as exc:
+        return json.dumps({"error": f"Neo4j query failed: {exc}"}, ensure_ascii=False)
+
+def make_query_graph_db(cfg: AgentConfig):
+    """
+    Create a function tool for querying the graph database with config bound.
+    """
+
+    @function_tool
+    def query_graph_db(query: str) -> str:
         """
-        Query the Neo4j graph database using Cypher queries.
+        Execute a Cypher query against the Neo4j graph database.
+
         Args:
-            query: A Cypher query string to execute against the Neo4j database.
-        Returns:
-            JSON string with query results (list of records as dicts).
+            query: Cypher query to execute.
         """
-        return service.run_query(query)
+        return search_graph_db(query, cfg)
 
-    return search_graph_db
+    return query_graph_db

@@ -1,9 +1,8 @@
-from agent.agent import Agent
+from agent.agent import create_agent, run_agent
 from agent.config import AgentConfig
-from agent.neo4j import Neo4jGraphService
 
 __all__ = [
-    "Agent",
+    "create_agent",
+    "run_agent",
     "AgentConfig",
-    "Neo4jGraphService",
 ]
