@@ -24,8 +24,11 @@ def configure_langsmith_env(
 class AgentConfig:
     model_name: str
     base_url: str
-    api_key: str
+    lapa_api_key: str
     temperature: float = 0.0
+    
+    openai_model_name: Optional[str] = None
+    openai_api_key: Optional[str] = None
 
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
@@ -43,8 +46,10 @@ class AgentConfig:
         return cls(
             model_name=os.getenv("MODEL_NAME", "lapa-function-calling"),
             base_url=os.getenv("BASE_URL", ""),
-            api_key=os.getenv("API_KEY", ""),
+            lapa_api_key=os.getenv("API_KEY", ""),
             temperature=float(os.getenv("MODEL_TEMPERATURE", "0") or 0),
+            openai_model_name=os.getenv("OPENAI_MODEL_NAME") or None,
+            openai_api_key=os.getenv("OPENAI_API_KEY") or None,
             neo4j_uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
             neo4j_user=os.getenv("NEO4J_USER", "neo4j"),
             neo4j_password=os.getenv("NEO4J_PASSWORD", "password"),

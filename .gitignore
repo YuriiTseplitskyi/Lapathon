@@ -5,3 +5,4 @@ nabu_data/
 *.zip
 *.pdf
 .claude
+tmpclaude*
