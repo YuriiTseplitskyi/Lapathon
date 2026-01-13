@@ -4,38 +4,57 @@ This repository contains the AI platform designed to consolidate and analyze dat
 
 ## Project Structure
 
-The project is organized to separate the core agent logic (which may evolve into a microservice) from experimental code and one-off maintenance scripts.
+The project is evolved into a set of specialized microservices, each handling a specific part of the data pipeline: ingestion, schema management, risk detection, and profile generation.
 
 ```text
 .
-├── agent/                  # Main Application Code (The "Brain")
-│   ├── app/
-│   │   ├── api/            # External interfaces (FastAPI/REST)
-│   │   ├── core/           # Infrastructure & Configuration
-│   │   │   └── settings.py # Application Settings
-│   │   ├── models/         # Data Structures (Pydantic/Dataclasses)
-│   │   ├── services/       # Business Logic & Capabilities
-│   │   │   └── graph/      # Neo4j Graph Service Package
-│   │   ├── tools/          # Agent Tools (Functions exposed to LLM)
-│   │   └── ui/             # Developer UI (Google Mesop)
-│   └── tests/              # Automated Unit & Integration Tests
-├── experiments/            # Research & Prototyping
-└── scripts/                # One-time Operational Scripts
+├── detection_service/  # Risk analysis and fraud detection
+├── ingestion_job/      # Data ingestion into Neo4j
+├── profile_creator/    # Consolidated profile generation
+├── schema_updater/     # Schema inference and management
+└── data/               # Local data storage (if applicable)
 ```
 
-## Directory Responsibilities
+## Services Overview
 
-### `agent/`
-Encapsulates the production-ready code.
--   **`api/`**: Entry points for external systems to interact with the agent.
--   **`core/`**: Foundational code that doesn't change often (database connections, authentication, global configuration).
--   **`models/`**: Shared type definitions used across the app to ensure data consistency.
--   **`services/`**: The "workhorses". Contains the actual logic for processing data, calculating risks, and determining graph connections. This code is imported by both `api` and `scripts`.
--   **`tools/`**: Specific abstractions that allow the LLM to interact with the `services`.
--   **`ui/`**: A lightweight frontend (using Google Mesop) for rapid testing and debugging of the agent's responses.
+### 1. Ingestion Job (`ingestion_job/`)
+Responsible for the initial ingestion of data into the Graph Database (Neo4j).
 
-### `experiments/`
-A sandbox for data exploration using Jupyter files. Code here is not production-critical and serves as a laboratory for testing new hypotheses or exploring the raw data structure.
+*   **Purpose**: Polls for unprocessed documents (e.g., from a MinIO bucket) and ingests nodes and relations into the Neo4j graph.
+*   **Trigger**: Configured to run once per day or on-demand.
+*   **Process**: Takes schema-parsed data and loads it into the graph.
+*   **Inputs**: JSON, XML, HTML, tabular, and text files.
 
-### `scripts/`
-Contains standalone scripts for operational tasks, such as the initial bulk data ingestion (`nabu_data`), database migrations, or manual re-indexing jobs. These scripts leverage the logic in `agent/app/services` to avoid code duplication.
+### 2. Schema Updater (`schema_updater/`)
+Manages the understanding of data structures from various registries.
+
+*   **Purpose**: Automatically detects and updates the schema for registry data.
+*   **Trigger**: Triggered when a new register folder is created in the bucket or when the Ingest Service detects a schema change.
+*   **Capabilities**:
+    *   Parses files to generate candidates for new Entities or Relations.
+    *   Writes new schemas to the MongoDB Schema/Entity Registry.
+    *   Notifies human operators if a new entity candidate requires verification.
+
+### 3. Detection Service (`detection_service/`)
+The core analytical engine for identifying potential issues.
+
+*   **Purpose**: Runs algorithmic searches on the graph and other data sources to find inconsistencies, hidden links, or violations.
+*   **Capabilities**:
+    *   Detects "hidden" links between entities.
+    *   Identifies data inconsistencies.
+    *   Flags positive fraud results for review.
+    *   **Future**: May include an "Accuracy/Time Balance" logic to decide whether to flag a potential risk (False Positive) or ignore it to save analyst time.
+
+### 4. Profile Creator (`profile_creator/`)
+Synthesizes scattered data into a coherent view.
+
+*   **Purpose**: Aggregates data from Neo4j and other sources to create a consolidated profile for a Person or Entity.
+*   **Output**: Writes consolidated profiles to the Profiles collection in MongoDB.
+*   **Validation**: Includes a validation layer (LLM/Human/Combined) to ensure the generated profile is accurate before final storage.
+
+## Data Flow Summary
+
+1.  **Ingestion**: Files arrive in MinIO -> `ingestion_job` puts them into Neo4j.
+2.  **Schema**: If data structure changes -> `schema_updater` adapts the schema in MongoDB.
+3.  **Analysis**: `detection_service` scans the graph for suspicious patterns.
+4.  **Reporting**: `profile_creator` builds a comprehensive profile for analysts to review.
