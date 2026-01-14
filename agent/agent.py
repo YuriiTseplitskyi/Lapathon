@@ -1,74 +1,27 @@
 from __future__ import annotations
 
-import ast
-import json
-import re
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional, Sequence
 
-from langchain_core.messages import (
-    AnyMessage,
-    HumanMessage,
-    SystemMessage,
-)
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-from langgraph.graph import END, START, StateGraph
+from pydantic import SecretStr
+from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
-from typing_extensions import Annotated, TypedDict
+from langgraph.prebuilt import ToolNode
+from typing_extensions import TypedDict
 
 from agent.config import AgentConfig, configure_langsmith_env
-from agent.prompts import SYSTEM_PROMPT_EN, SYSTEM_PROMPT_UK
+from agent.prompts import SYSTEM_PROMPT_UK
 from agent.tools import make_search_graph_db_tool
 
 
-TOOL_CALL_RE = re.compile(r"(?s)<tool_call>\s*(\{.*?\})\s*</tool_call>")
-
-
-def parse_tool_call(message: AnyMessage) -> Optional[Dict[str, Any]]:
-    """
-    Parse tool call from <tool_call>{...}</tool_call> XML format in message content.
-    """
-    content = getattr(message, "content", "")
-    if not isinstance(content, str) or not content:
-        return None
-
-    match = TOOL_CALL_RE.search(content)
-    if not match:
-        return None
-
-    payload_raw = match.group(1).strip()
-
-    try:
-        payload = ast.literal_eval(payload_raw)
-    except Exception:
-        try:
-            payload = json.loads(payload_raw)
-        except Exception:
-            return None
-
-    if not isinstance(payload, dict):
-        return None
-    if payload.get("name") != "search_graph_db":
-        return None
-
-    args = payload.get("arguments")
-    if not isinstance(args, dict):
-        return None
-
-    q = args.get("query")
-    if not isinstance(q, str) or not q.strip():
-        return None
-
-    return payload
-
-
 class AgentState(TypedDict):
-    messages: Annotated[List[AnyMessage], add_messages]
-    pending_tool: Optional[Dict[str, Any]]
+    messages: Annotated[Sequence[BaseMessage], add_messages]
 
 
 class Agent:
     """
-    Agent that guides an LLM to issue a single Neo4j Cypher query via a LangChain tool.
+    Agent that iteratively queries Neo4j via native LangChain tool calling.
     """
 
     def __init__(
@@ -80,70 +33,74 @@ class Agent:
 
         self.cfg = cfg
         self.system_prompt = system_prompt or SYSTEM_PROMPT_UK
-        self.tool = make_search_graph_db_tool(cfg)
+        self.tools = [
+            make_search_graph_db_tool(cfg)
+        ]
 
-        self.llm = ChatOpenAI(
+        # Model for tool calling (forces tool use)
+        self.llm_tools = ChatOpenAI(
             model=cfg.model_name,
             base_url=cfg.base_url,
-            api_key=cfg.lapa_api_key,
+            api_key=SecretStr(cfg.lapa_api_key),
             temperature=cfg.temperature,
-        ).bind_tools([self.tool])
+            stop=["<|eot_id|>", "<|end_of_text|>"],
+        ).bind_tools(self.tools, tool_choice="required")
+
+        # Model for text generation (after tool results)
+        self.llm_text = ChatOpenAI(
+            model="lapa",
+            base_url=cfg.base_url,
+            api_key=SecretStr(cfg.lapa_api_key),
+            temperature=cfg.temperature,
+            stop=["<|eot_id|>", "<|end_of_text|>"],
+        )
 
         self.graph = self._build_graph()
 
     def _build_graph(self):
         def llm_node(state: AgentState) -> Dict[str, Any]:
-            resp = self.llm.invoke(state["messages"])
+            # Check if we have tool results in messages
+            has_tool_results = any(
+                hasattr(m, "type") and m.type == "tool" for m in state["messages"]
+            )
+
+            if has_tool_results:
+                # After tool results: use text model for final answer
+                resp = self.llm_text.invoke(state["messages"])
+            else:
+                # No tool results yet: use tool-calling model
+                resp = self.llm_tools.invoke(state["messages"])
+
             return {"messages": [resp]}
 
-        def parse_tool_call_node(state: AgentState) -> Dict[str, Any]:
-            last = state["messages"][-1]
-            tc = parse_tool_call(last)
-            return {"pending_tool": tc}
-
-        def run_tool_node(state: AgentState) -> Dict[str, Any]:
-            tc = state.get("pending_tool")
-            if not tc:
-                return {}
-
-            query = tc["arguments"]["query"]
-            tool_name = tc["name"]
-            tool_result = self.tool.invoke({"query": query})  # JSON string
-
-            tool_result_msg = HumanMessage(
-                content=(
-                    f"Результат виклику інструмента {tool_name}:\n"
-                    f"{tool_result}\n\n"
-                    "Використай отримані дані для формування відповіді користувачу.\n"
-                    "Якщо результат виклику інструмента вказує на некоректний запит, проаналізуй цей і повтори виклик тула з випривленням помилки.\n"
-                    "Якщо результат інструменту - порожній ([]), значить попередній запит некоректний. Повтори виклик тула з виправленням помилки.\n"
-                    "Завжди дотримуйся правил **виклику інструмента** та **написання Cypher-запитів**, зазначених вище."
-                )
-            )
-            return {"messages": [tool_result_msg], "pending_tool": None}
-
-        def route_after_parse(state: AgentState) -> str:
-            return "run_tool" if state.get("pending_tool") else END
+        def should_continue(state: AgentState) -> str:
+            last_message = state["messages"][-1]
+            if isinstance(last_message, AIMessage) and last_message.tool_calls:
+                return "tools"
+            return END
 
         graph = StateGraph(AgentState)
         graph.add_node("llm", llm_node)
-        graph.add_node("parse_tool_call", parse_tool_call_node)
-        graph.add_node("run_tool", run_tool_node)
+        graph.add_node("tools", ToolNode(tools=self.tools))
 
-        graph.add_edge(START, "llm")
-        graph.add_edge("llm", "parse_tool_call")
+        graph.set_entry_point("llm")
         graph.add_conditional_edges(
-            "parse_tool_call", route_after_parse, {"run_tool": "run_tool", END: END}
+            "llm",
+            should_continue,
+            {
+                "tools": "tools", 
+                END: END
+            },
         )
-        graph.add_edge("run_tool", "llm")
+        graph.add_edge("tools", "llm")
 
         return graph.compile()
 
     def invoke(self, user_text: str) -> str:
-        init_messages: List[AnyMessage] = [
+        init_messages: List[BaseMessage] = [
             SystemMessage(content=self.system_prompt),
             HumanMessage(content=user_text),
         ]
-        out = self.graph.invoke({"messages": init_messages, "pending_tool": None})
+        out = self.graph.invoke({"messages": init_messages})
         final_msg = out["messages"][-1]
         return getattr(final_msg, "content", str(final_msg))
