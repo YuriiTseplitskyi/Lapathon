@@ -10,7 +10,7 @@ from agent.config import AgentConfig
 
 class Neo4jGraphService:
     """
-    Thin wrapper around the Neo4j driver to execute read-only Cypher queries.
+    Service for executing read-only Cypher queries against Neo4j.
     """
 
     def __init__(self, cfg: AgentConfig):
@@ -21,17 +21,16 @@ class Neo4jGraphService:
         if not q:
             return json.dumps({"error": "Empty query"}, ensure_ascii=False)
 
-        if not self.cfg.allow_write_queries:
-            blocked = ("CREATE", "MERGE", "DELETE", "SET", "DROP", "CALL", "LOAD CSV", "APOC")
-            upper = q.upper()
-            if any(tok in upper for tok in blocked):
-                return json.dumps(
-                    {
-                        "error": "Write/procedure queries are disabled for this agent.",
-                        "hint": "Use MATCH/RETURN (read-only) queries.",
-                    },
-                    ensure_ascii=False,
-                )
+        blocked = ("CREATE", "MERGE", "DELETE", "SET", "DROP", "CALL", "LOAD CSV", "APOC")
+        upper = q.upper()
+        if any(tok in upper for tok in blocked):
+            return json.dumps(
+                {
+                    "error": "Write/procedure queries are disabled for this agent.",
+                    "hint": "Use MATCH/RETURN (read-only) queries.",
+                },
+                ensure_ascii=False,
+            )
 
         try:
             auth = (self.cfg.neo4j_user, self.cfg.neo4j_password)
@@ -44,5 +43,5 @@ class Neo4jGraphService:
                     result = session.run(q)
                     records: List[Dict[str, Any]] = [r.data() for r in result]
                     return json.dumps(records, ensure_ascii=False)
-        except Exception as exc:  # pragma: no cover - defensive logging path
+        except Exception as exc:
             return json.dumps({"error": f"Neo4j query failed: {exc}"}, ensure_ascii=False)
