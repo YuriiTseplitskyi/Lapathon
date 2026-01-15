@@ -11,23 +11,34 @@ def resolve_variant_impl(canonical_doc: Dict[str, Any], register_schemas: List[R
     sc = meta.get("service_code")
     mc = meta.get("method_code")
 
+    attempts: List[Dict[str, Any]] = []
     candidates: List[Tuple[RegisterSchemaVariant, int, List[str], RegisterSchema]] = []
+    
     for rs in register_schemas:
-        if rc and rs.registry_code != rc:
-            continue
-        if rs.service_code and sc and rs.service_code != sc:
-            continue
-        if rs.method_code and mc and rs.method_code != mc:
-            continue
+        # Strict header matching is disabled because data has inconsistent codes (e.g. Test_ICS_cons vs DRFO)
+        # We rely on predicates.
+        # if rc and rs.registry_code != rc: continue
+        # if rs.service_code and sc and rs.service_code != sc: continue
+        # if rs.method_code and mc and rs.method_code != mc: continue
+        
         for v in rs.variants:
             matched, score, reasons = eval_predicate(canonical_doc, v.match_predicate.model_dump())
+            
+            attempt_info = {
+                 "variant_id": v.variant_id,
+                 "registry_code": rs.registry_code,
+                 "score": score,
+                 "matched": matched,
+                 "reasons": reasons
+            }
+            attempts.append(attempt_info)
+            
             if matched:
                 candidates.append((v, score, reasons, rs))
 
     debug: Dict[str, Any] = {
         "meta": {"registry_code": rc, "service_code": sc, "method_code": mc},
-        "candidates": [{"variant_id": v.variant_id, "score": score, "reasons": reasons, "registry_code": rs.registry_code, "service_code": rs.service_code, "method_code": rs.method_code}
-                       for (v, score, reasons, rs) in candidates]
+        "details": attempts  # Full history
     }
 
     if not candidates:

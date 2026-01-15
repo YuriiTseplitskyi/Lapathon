@@ -53,4 +53,10 @@ class MongoQuarantineStore(QuarantineStore):
         self.col = self.db["quarantined_documents"]
 
     def quarantine(self, record: QuarantinedDocument) -> None:
+        # Check for existing open quarantine for this file
+        if record.file_path:
+            self.col.delete_many({
+                "file_path": record.file_path,
+                "status": "open"
+            })
         self.col.insert_one(record.model_dump(mode='json'))

@@ -1,38 +1,41 @@
-# Ingestion Service (minimal)
+# Ingestion Job Service
 
-This is a minimal ingestion microservice prototype.
+The **Ingestion Job** is responsible for parsing raw XML/JSON documents, normalizing them, resolving schemas, and populating the Neo4j Knowledge Graph.
 
-## What it does (high-level)
-- Reads raw XML/JSON files.
-- Converts them into a canonical JSON envelope: `{"meta": {...}, "data": ...}`.
-- Resolves a register schema variant using `schemas/register_schemas.json`.
-- Maps canonical JSON into entity instances using variant mappings.
-- Builds relationships using `schemas/relationship_schemas.json`.
-- Writes outputs:
-  - `out/graph_snapshot.json` (JSON sink)
-  - `out/logs/*.jsonl` (ingestion logs, ingested documents, quarantine index)
-  - `out/quarantine/*.canonical.json` (quarantined docs)
+> **⚠️ SYSTEM HANDOFF (2026-01-15)**
+> A detailed report on the current system status, architecture, and known issues is available in **[docs/SYSTEM_HANDOFF.md](docs/SYSTEM_HANDOFF.md)**.
+> Please review this document before making further changes.
 
-## Switching backends
-Environment variables (prod defaults):
-- `SCHEMA_BACKEND` = `mongo` | `json`
-- `GRAPH_SINK` = `neo4j` | `json`
-- `LOG_BACKEND` = `mongo` | `json`
+## Quick Start (Full Reset & Re-ingest)
 
-In the sandbox tests we use `json/json/json`.
-
-## Run sanity check
-```bash
-python -m ingestion_service.tests.sanity_check
-```
-
-or:
+To wipe the database and ingest all data from `data/nabu_data`:
 
 ```bash
-python /mnt/data/ingestion_service/tests/sanity_check.py
+cd ingestion_job
+
+# 1. Reset MongoDB & Neo4j (Wipes all data!)
+uv run python3 scripts/reset_db.py
+
+# 2. Initialize Schemas (Entities, Registers, Relationships)
+uv run python3 scripts/init_schemas.py
+
+# 3. Run Batch Ingestion
+uv run python3 scripts/run_batch.py
+
+# 4. Verify Results
+uv run python3 scripts/check_all_labels.py
 ```
 
-## CLI ingest
-```bash
-python -m app.main /path/to/file --schema-backend json --graph-sink json --log-backend json --schemas-dir ./schemas --out-dir ./out
-```
+## Key Scripts
+
+*   `scripts/init_schemas.py`: Defines the data model (Entities, Relationships, Registry Mappings). Run this if you change the schema.
+*   `scripts/run_batch.py`: Main entry point for batch processing.
+*   `scripts/check_metrics.py` / `scripts/check_all_labels.py`: Verification tools.
+*   `scripts/debug_quarantine.py`: Inspects failed documents in MongoDB.
+
+## Configuration
+
+Environment variables stored in `.env` (root level):
+*   `MONGO_URI` / `MONGO_DB`
+*   `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD`
+*   `data_dir`: Path to raw data (e.g., `.../Lapathon/data/nabu_data`).

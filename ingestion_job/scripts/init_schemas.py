@@ -1,16 +1,13 @@
 
 import os
-import glob
-import json
-import uuid
-import hashlib
+import sys
 from datetime import datetime, timezone
 from pymongo import MongoClient
+from pymongo.database import Database
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Fix paths
-import sys
-from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(BASE_DIR))
 
@@ -27,190 +24,261 @@ def get_db():
 def now_utc():
     return datetime.now(timezone.utc)
 
+def make_entity_schema(name, props, identity_keys=[]):
+    # Convert simple prop list to EntityPropertySchema objects
+    properties = []
+    for p in props:
+        properties.append({
+            "name": p,
+            "type": "string",
+            "is_required": False,
+            "change_type": "rarely_changed",
+            "normalize": []
+        })
+
+    # Prepare Identity Keys with priority
+    formatted_id_keys = []
+    for idx, ik in enumerate(identity_keys):
+        formatted_id_keys.append({
+            "priority": (idx + 1) * 10,
+            "when": ik.get("when", {}),
+            "properties": ik.get("properties", [])
+        })
+        
+    # Build complete structure
+    return {
+        "entity_name": name,
+        "neo4j": {
+            "labels": [name],
+            "primary_key": "node_id",
+            "constraints": []
+        },
+        "identity_keys": formatted_id_keys,
+        "properties": properties,
+        "merge_policy": {
+            "default": "prefer_non_null",
+            "immutable_conflict": "quarantine_and_alert",
+            "rarely_changed_conflict": "log_warning_and_keep_existing",
+            "dynamic_conflict": "take_latest_by_source_timestamp"
+        },
+        "source_priority": [],
+        "version": 1,
+        "status": "active",
+        "created_at": now_utc(),
+        "updated_at": now_utc()
+    }
+
 def init_entities(db):
     print("Initializing Entity Schemas...")
     coll = db["entity_schemas"]
+    coll.delete_many({}) # Clear existing
     
-    # helper for creating schema defs
-    def make_entity(name, props, identity_keys=[]):
-        p_dict = {p: {"type": "string", "change_type": "immutable"} for p in props}
-        return {
-            "entity_name": name,
-            "properties": p_dict,
-            "identity_keys": identity_keys,
-            "created_at": now_utc(),
-            "updated_at": now_utc()
-        }
-
     entities = []
     
     # 1. Person
-    entities.append(make_entity(
+    entities.append(make_entity_schema(
         "Person", 
         ["person_id", "gender", "unzr", "birth_date", "citizenship", "registry_source", 
          "last_name", "birth_place", "middle_name", "rnokpp", "full_name", "first_name"],
         [
             {"properties": ["rnokpp"], "when": {"exists": ["rnokpp"]}},
-            {"properties": ["full_name"], "when": {"exists": ["full_name"]}} # Fallback/Weak
+            {"properties": ["full_name"], "when": {"exists": ["full_name"]}} 
         ]
     ))
     
     # 2. Vehicle
-    entities.append(make_entity(
+    entities.append(make_entity_schema(
         "Vehicle",
         ["vehicle_id", "year", "color", "registration_number", "vin", "model", "make", "car_id"],
         [{"properties": ["vin"], "when": {"exists": ["vin"]}}]
     ))
 
     # 3. CivilEvent
-    entities.append(make_entity(
+    entities.append(make_entity_schema(
         "CivilEvent",
         ["event_id", "response_id", "date", "registry_office", "event_type", "act_number"],
-        [{"properties": ["act_number", "event_type"], "when": {"exists": ["act_number"]}}]
+        [{"properties": ["act_number"], "when": {"exists": ["act_number"]}}]
     ))
     
     # 4. CourtCase
-    entities.append(make_entity("CourtCase", ["court_id", "case_id", "case_number"]))
+    entities.append(make_entity_schema("CourtCase", ["court_id", "case_id", "case_number"]))
     
     # 5. Court
-    entities.append(make_entity("Court", ["court_id", "court_name", "court_code"]))
+    entities.append(make_entity_schema("Court", ["court_id", "court_name", "court_code"]))
     
     # 6. CourtDecision
-    entities.append(make_entity(
+    entities.append(make_entity_schema(
         "CourtDecision", 
         ["court_id", "decision_id", "reg_num", "court_name", "case_number", "decision_date", "decision_type"]
     ))
     
     # 7. IncomeRecord
-    entities.append(make_entity(
+    entities.append(make_entity_schema(
         "IncomeRecord",
         ["person_id", "organization_id", "period_id", "income_id", "tax_amount", "income_type_code",
          "tax_transferred", "response_id", "income_accrued", "income_paid", "income_amount", "tax_charged"]
     ))
     
     # 8. Period
-    entities.append(make_entity("Period", ["period_id", "year", "quarter"]))
+    entities.append(make_entity_schema("Period", ["period_id", "year", "quarter"]))
     
     # 9. Organization
-    entities.append(make_entity(
+    entities.append(make_entity_schema(
         "Organization", 
         ["name", "organization_id", "org_type", "org_code"],
         [{"properties": ["org_code"], "when": {"exists": ["org_code"]}}]
     ))
     
     # 10. OwnershipRight
-    entities.append(make_entity(
+    entities.append(make_entity_schema(
         "OwnershipRight",
         ["property_id", "right_id", "rn_num", "registrar", "right_reg_date", "pr_state",
          "doc_type", "doc_type_extension", "right_type", "doc_date", "doc_publisher", "share"]
     ))
     
     # 11. Property
-    entities.append(make_entity(
+    entities.append(make_entity_schema(
         "Property",
         ["property_id", "reg_num", "registration_date", "re_type", "state", "cad_num", "area", "area_unit"],
         [{"properties": ["reg_num"], "when": {"exists": ["reg_num"]}}]
     ))
     
     # 12. Address
-    entities.append(make_entity(
+    entities.append(make_entity_schema(
         "Address",
         ["address_id", "street", "region", "house", "apartment", "city", "address_line", "district", "koatuu"]
     ))
     
     # 13. Identifier
-    entities.append(make_entity("Identifier", ["identifier_id", "identifier_value", "identifier_type"]))
+    entities.append(make_entity_schema("Identifier", ["identifier_id", "identifier_value", "identifier_type"]))
     
     # 14. TaxAgent
-    entities.append(make_entity(
+    entities.append(make_entity_schema(
         "TaxAgent",
         ["name", "organization_id", "org_type", "org_code"],
         [{"properties": ["org_code"], "when": {"exists": ["org_code"]}}]
     ))
     
     # 15. VehicleRegistration
-    entities.append(make_entity(
+    entities.append(make_entity_schema(
         "VehicleRegistration",
         ["vehicle_id", "registration_id", "registration_date", "opercode", "dep_reg_name", "doc_id", "status"]
     ))
 
+    # 16. Document (Passport etc)
+    entities.append(make_entity_schema(
+        "Document",
+        ["document_id", "doc_number", "doc_series", "type", "date_issue", "dep_out", "status", "expiration_date"],
+        [{"properties": ["doc_number", "doc_series"], "when": {"exists": ["doc_number"]}}]
+    ))
+
+    # 17. Activity (NACE/KVED)
+    entities.append(make_entity_schema(
+        "Activity",
+        ["activity_id", "code", "name", "is_primary"]
+    ))
+
+    # Update Organization props
+    # (Re-injecting Organization with edrpou)
+    # Finding index of Organization... easier to just append, existing `make_entity_schema` creates list.
+    # But I should update the existing one if possible, or just add `edrpou` to the list above in `replace_file_content` block?
+    # I am replacing lines 161-232 of original file (which contains init_rels too).
+    # I will rewrite the end of init_entities and init_relationships fully.
+
     # Upsert
     for e in entities:
+        if e["entity_name"] == "Organization":
+            e["properties"].append({
+                "name": "edrpou", "type": "string", "is_required": False, "change_type": "rarely_changed", "normalize": []
+            })
         coll.replace_one({"entity_name": e["entity_name"]}, e, upsert=True)
     
     print(f"Inserted {len(entities)} entity schemas.")
 
+def make_rel_schema(name, rel_type, from_ent, to_ent, props=[], from_ref=None, to_ref=None):
+    # Default refs if not provided (fallback to Label for simplicity if user didn't specify custom ref)
+    # But note: init_registers uses specific refs like "Prop", "Right". 
+    # If from_ref is None, we default to from_ent (Label).
+    f_ref = from_ref if from_ref else from_ent
+    t_ref = to_ref if to_ref else to_ent
+    
+    return {
+        "relationship_name": name,
+        "neo4j": {
+            "type": rel_type,
+            "direction": "out",
+            "from_label": from_ent,
+            "to_label": to_ent
+        },
+        "endpoints": {
+            "from_entity": from_ent,
+            "to_entity": to_ent
+        },
+        "creation_rules": [
+            {
+                "rule_id": "default",
+                "when": {"all": []},
+                "bind": {
+                    "from": {"entity_ref": f_ref},
+                    "to": {"entity_ref": t_ref}
+                },
+                "properties": [{"name": p} for p in props]
+            }
+        ],
+        "uniqueness": {
+            "strategy": "unique_per_endpoints_and_type",
+            "keys": []
+        },
+        "merge_policy": {},
+        "version": 1,
+        "status": "active",
+        "created_at": now_utc(),
+        "updated_at": now_utc()
+    }
+
 def init_relationships(db):
     print("Initializing Relationship Schemas...")
     coll = db["relationship_schemas"]
+    coll.delete_many({})
     
-    def make_rel(name, rel_type, from_ent, to_ent, props=[]):
-        return {
-            "relationship_name": name,
-            "neo4j": {"type": rel_type},
-            "source": {"entity": from_ent},
-            "target": {"entity": to_ent},
-            "properties": {p: {"type": "string"} for p in props},
-            "creation_rules": [
-                {
-                    "bind": {
-                        "from_": {"entity": from_ent, "entity_ref": f"{from_ent}Ref"}, # Generic ref
-                        "to": {"entity": to_ent, "entity_ref": f"{to_ent}Ref"}
-                    },
-                    "properties": []
-                }
-            ],
-            "created_at": now_utc(),
-            "updated_at": now_utc()
-        }
-        
     rels = []
     
-    # 1. IN_COURT
-    rels.append(make_rel("CourtCase_IN_COURT_Court", "IN_COURT", "CourtCase", "Court"))
-    
-    # 2. FOR_CASE
-    rels.append(make_rel("CourtDecision_FOR_CASE_CourtCase", "FOR_CASE", "CourtDecision", "CourtCase"))
-    
-    # 3. FOR_PERIOD
-    rels.append(make_rel("IncomeRecord_FOR_PERIOD_Period", "FOR_PERIOD", "IncomeRecord", "Period"))
-    
-    # 4. HAS_RIGHT (Organization)
-    rels.append(make_rel("Organization_HAS_RIGHT_OwnershipRight", "HAS_RIGHT", "Organization", "OwnershipRight", ["role"]))
-    # 4b. HAS_RIGHT (Person)
-    rels.append(make_rel("Person_HAS_RIGHT_OwnershipRight", "HAS_RIGHT", "Person", "OwnershipRight", ["role"]))
-    
-    # 5. PAID_INCOME (Organization)
-    rels.append(make_rel("Organization_PAID_INCOME_IncomeRecord", "PAID_INCOME", "Organization", "IncomeRecord"))
-    # 5b. PAID_INCOME (TaxAgent)
-    rels.append(make_rel("TaxAgent_PAID_INCOME_IncomeRecord", "PAID_INCOME", "TaxAgent", "IncomeRecord"))
-    
-    # 6. RIGHT_TO
-    rels.append(make_rel("OwnershipRight_RIGHT_TO_Property", "RIGHT_TO", "OwnershipRight", "Property"))
-    
-    # 7. HAS_ADDRESS
-    rels.append(make_rel("Person_HAS_ADDRESS_Address", "HAS_ADDRESS", "Person", "Address", ["relationship_type"]))
-    
-    # 8. LOCATED_AT
-    rels.append(make_rel("Property_LOCATED_AT_Address", "LOCATED_AT", "Property", "Address"))
-    
-    # 9. HAS_IDENTIFIER
-    rels.append(make_rel("Person_HAS_IDENTIFIER_Identifier", "HAS_IDENTIFIER", "Person", "Identifier"))
-    
-    # 10. HAS_INCOME
-    rels.append(make_rel("Person_HAS_INCOME_IncomeRecord", "HAS_INCOME", "Person", "IncomeRecord"))
-    
-    # 11. INVOLVED_IN (Legacy) - keeping user requested HAS_CIVIL_EVENT alias if needed, or stick to this?
-    # User showed legacy uses INVOLVED_IN. I will use INVOLVED_IN to match legacy.
-    rels.append(make_rel("Person_INVOLVED_IN_CivilEvent", "INVOLVED_IN", "Person", "CivilEvent", ["role"]))
-    
-    # 12. OWNS_VEHICLE
-    rels.append(make_rel("Person_OWNS_VEHICLE_Vehicle", "OWNS_VEHICLE", "Person", "Vehicle", ["role"]))
-    
-    # 13. HAS_REGISTRATION
-    rels.append(make_rel("Vehicle_HAS_REGISTRATION_VehicleRegistration", "HAS_REGISTRATION", "Vehicle", "VehicleRegistration"))
+    # RRP Relationships
+    # Right -> Property
+    rels.append(make_rel_schema("OwnershipRight_RIGHT_TO_Property", "RIGHT_TO", "OwnershipRight", "Property", [], from_ref="Right", to_ref="Prop"))
+    # Person (Owner) -> Right
+    rels.append(make_rel_schema("Person_HAS_RIGHT_OwnershipRight", "HAS_RIGHT", "Person", "OwnershipRight", ["role"], from_ref="Owner", to_ref="Right"))
+    # Property -> Address
+    rels.append(make_rel_schema("Property_LOCATED_AT_Address", "LOCATED_AT", "Property", "Address", [], from_ref="Prop", to_ref="Addr"))
 
-    # Upsert
+    # DRFO Relationships
+    # TaxAgent -> Income
+    rels.append(make_rel_schema("Organization_PAID_INCOME_IncomeRecord", "PAID_INCOME", "Organization", "IncomeRecord", [], from_ref="TaxAgent", to_ref="IncRec"))
+    # Person (Main) -> Income
+    # Note: MainPerson is Root scope, IncRec is nested. Needs relationship builder robust enough (which I haven't fixed yet, but let's define it correctly first).
+    rels.append(make_rel_schema("Person_HAS_INCOME_IncomeRecord", "HAS_INCOME", "Person", "IncomeRecord", [], from_ref="MainPerson", to_ref="IncRec"))
+
+    # EDR Relationships
+    # Org -> Addr
+    rels.append(make_rel_schema("Organization_HAS_ADDRESS_Address", "HAS_ADDRESS", "Organization", "Address", [], from_ref="Org", to_ref="OrgAddr"))
+    # Org -> Head (Person)
+    # We mapped Head (Person). Need relationship.
+    # Person_IS_HEAD_OF_Organization? 
+    # Or Organization_HAS_HEAD_Person?
+    # Let's add one. Labels: Organization, Person.
+    rels.append(make_rel_schema("Organization_HAS_HEAD_Person", "HAS_HEAD", "Organization", "Person", [], from_ref="Org", to_ref="Head"))
+
+    # EIS Relationships
+    # Person -> Document
+    rels.append(make_rel_schema("Person_HAS_DOCUMENT_Document", "HAS_DOCUMENT", "Person", "Document", [], from_ref="EisPerson", to_ref="Passport"))
+    # Issuer -> Document?
+    rels.append(make_rel_schema("Organization_ISSUED_Document", "ISSUED", "Organization", "Document", [], from_ref="Issuer", to_ref="Passport"))
+
+    # Legacy / Other
+    # rels.append(make_rel_schema("CourtCase_IN_COURT_Court", "IN_COURT", "CourtCase", "Court"))
+    # rels.append(make_rel_schema("CourtDecision_FOR_CASE_CourtCase", "FOR_CASE", "CourtDecision", "CourtCase"))
+    # rels.append(make_rel_schema("IncomeRecord_FOR_PERIOD_Period", "FOR_PERIOD", "IncomeRecord", "Period"))
+
     for r in rels:
         coll.replace_one({"relationship_name": r["relationship_name"]}, r, upsert=True)
     
@@ -219,10 +287,10 @@ def init_relationships(db):
 def init_registers(db):
     print("Initializing Register Schemas...")
     coll = db["register_schemas"]
+    coll.delete_many({})
     
     variants = []
     
-    # Helper to create mappings
     def m(mid, scope, src_path, target_ent, target_prop, ent_ref):
         return {
             "mapping_id": mid,
@@ -231,162 +299,226 @@ def init_registers(db):
             "targets": [{"entity": target_ent, "property": target_prop, "entity_ref": ent_ref}]
         }
 
-    # ==========================================
-    # 1. MJU EDR Prod (SubjectDetail2Ext)
-    # ==========================================
+    # ==========================
+    # 1. MJU EDR Prod
+    # ==========================
     edr_mappings = []
-    # Founder -> Person
+    # Founder
     edr_mappings.append(m("founder", "$.data.Envelope.Body.SubjectDetail2ExtResponse.Subject[*].founders.founder[*]", "$.name", "Person", "full_name", "FounderPerson"))
     edr_mappings.append(m("founder", "$.data.Envelope.Body.SubjectDetail2ExtResponse.Subject[*].founders.founder[*]", "$.code", "Person", "rnokpp", "FounderPerson"))
-    edr_mappings.append(m("founder", "$.data.Envelope.Body.SubjectDetail2ExtResponse.Subject[*].founders.founder[*]", "$.address.address", "Person", "birth_place", "FounderPerson")) # mapping address to birth_place as loose approximation or just new field? user declared strict schema from legacy. Address is separate node. 
-    # Let's map Address properly relationship later? For now, stick to basic props.
-    
-    # Head -> Person
+    # Head
     edr_mappings.append(m("head", "$.data.Envelope.Body.SubjectDetail2ExtResponse.Subject[*].heads.head[*]", "$.first_middle_name", "Person", "full_name", "HeadPerson"))
     edr_mappings.append(m("head", "$.data.Envelope.Body.SubjectDetail2ExtResponse.Subject[*].heads.head[*]", "$.last_name", "Person", "last_name", "HeadPerson"))
     edr_mappings.append(m("head", "$.data.Envelope.Body.SubjectDetail2ExtResponse.Subject[*].heads.head[*]", "$.rnokpp", "Person", "rnokpp", "HeadPerson"))
 
     variants.append({
         "variant_id": "edr_subject_v1",
-        "match_predicate": {"registry_code": "Test_ICS_cons", "service_code": "2_MJU_EDR_prod", "method_code": "SubjectDetail2Ext"},
+        "match_predicate": {
+            "all": [
+                {"type": "json_equals", "path": "$.meta.registry_code", "value": "Test_ICS_cons"},
+                {"type": "json_equals", "path": "$.meta.service_code", "value": "2_MJU_EDR_prod"},
+                {"type": "json_equals", "path": "$.meta.method_code", "value": "SubjectDetail2Ext"}
+            ]
+        },
+        "mappings": edr_mappings
+    })
+
+def init_registers(db: Database):
+    print("Initializing Register Schemas...")
+    coll = db["register_schemas"]
+    coll.drop()
+    
+    # helper for mapping
+    # m(mapping_id, scope_str, source_str, label, prop, ent_ref)
+    def m(mid, scope_path, src_path, lbl, prop, ent_ref):
+        return {
+            "mapping_id": mid,
+            "scope": {"foreach": scope_path},
+            "source": {"json_path": src_path},
+            "targets": [
+                {
+                    "entity": lbl,
+                    "property": prop,
+                    "entity_ref": ent_ref
+                }
+            ]
+        }
+
+    # ==========================================
+    # 1. RRP (State Register of Rights to Real Estate)
+    # ==========================================
+    rrp_variants = []
+    rrp_mappings = []
+    base_scope = "$.data.array.resultData.result[*].realty[*]"
+    
+    # Property Node
+    rrp_mappings.append(m("prop_main", base_scope, "$.regNum", "Property", "reg_num", "Prop"))
+    rrp_mappings.append(m("prop_main", base_scope, "$.reType", "Property", "re_type", "Prop"))
+    rrp_mappings.append(m("prop_main", base_scope, "$.regDate", "Property", "registration_date", "Prop"))
+    
+    # Area (nested list usually 1 item, flatten via path)
+    # Path: groundArea[0].area etc.
+    rrp_mappings.append(m("prop_area", base_scope, "$.groundArea[0].area", "Property", "area", "Prop"))
+    rrp_mappings.append(m("prop_area", base_scope, "$.groundArea[0].areaUM", "Property", "area_unit", "Prop"))
+    rrp_mappings.append(m("prop_area", base_scope, "$.groundArea[0].cadNum", "Property", "cad_num", "Prop"))
+
+    # Address Node
+    rrp_mappings.append(m("prop_addr", base_scope, "$.realtyAddress[0].addressDetail", "Address", "full_address", "Addr"))
+    rrp_mappings.append(m("prop_addr", base_scope, "$.realtyAddress[0].koatuu", "Address", "koatuu", "Addr"))
+    
+    # 1.2 Ownership & Subjects (Scope: properties -> subjects)
+    right_scope = "$.data.array.resultData.result[*].realty[*].properties[*]"
+    rrp_mappings.append(m("right_node", right_scope, "$.rnNum", "OwnershipRight", "rn_num", "Right"))
+    rrp_mappings.append(m("right_node", right_scope, "$.prKind", "OwnershipRight", "type", "Right"))
+    rrp_mappings.append(m("right_node", right_scope, "$.partSize", "OwnershipRight", "share", "Right"))
+    
+    # Subjects (Owners) - flattened first subject for simplicity
+    rrp_mappings.append(m("right_owner_0", right_scope, "$.subjects[0].sbjName", "Person", "full_name", "Owner"))
+    rrp_mappings.append(m("right_owner_0", right_scope, "$.subjects[0].sbjCode", "Person", "rnokpp", "Owner"))
+
+    rrp_variants.append({
+        "variant_id": "rrp_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_equals", "path": "$.data.array.entity", "value": "rrpExch_external"}
+            ]
+        },
+        "mappings": rrp_mappings
+    })
+
+    # ==========================================
+    # 2. DRFO (Tax Income)
+    # ==========================================
+    drfo_variants = []
+    drfo_mappings = []
+    inc_scope = "$.data.Envelope.Body.InfoIncomeSourcesDRFO2AnswerResponse.SourcesOfIncome[*]"
+    
+    # Income Node
+    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.IncomeAccrued", "IncomeRecord", "amount", "IncRec"))
+    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.period_year", "IncomeRecord", "year", "IncRec"))
+    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.period_quarter_month", "IncomeRecord", "period", "IncRec"))
+    
+    # TaxAgent Node
+    drfo_mappings.append(m("tax_agent", inc_scope, "$.TaxAgent", "Organization", "tax_id", "TaxAgent"))
+    drfo_mappings.append(m("tax_agent", inc_scope, "$.NameTaxAgent", "Organization", "name", "TaxAgent"))
+    
+    # Person (Subject) - Root level
+    root_scope = "$.data.Envelope.Body.InfoIncomeSourcesDRFO2AnswerResponse.Info"
+    drfo_mappings.append(m("main_subj", root_scope, "$.RNOKPP", "Person", "rnokpp", "MainPerson"))
+
+    drfo_variants.append({
+        "variant_id": "drfo_income_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.Envelope.Body.InfoIncomeSourcesDRFO2AnswerResponse"}
+            ]
+        },
+        "mappings": drfo_mappings
+    })
+
+    # ==========================================
+    # 3. EDR (Unified Registry of Enterprises)
+    # ==========================================
+    edr_variants = []
+    edr_mappings = []
+    edr_scope = "$.data.Envelope.Body.SubjectDetail2ExtResponse.Subject"
+    
+    # Organization
+    edr_mappings.append(m("edr_org", edr_scope, "$.code", "Organization", "edrpou", "Org"))
+    edr_mappings.append(m("edr_org", edr_scope, "$.names.name", "Organization", "name", "Org"))
+    edr_mappings.append(m("edr_org", edr_scope, "$.state_text", "Organization", "status", "Org"))
+    edr_mappings.append(m("edr_org", edr_scope, "$.address.address", "Address", "full_address", "OrgAddr"))
+    
+    # CEO (Head) - list
+    head_scope = "$.data.Envelope.Body.SubjectDetail2ExtResponse.Subject.heads[*]"
+    edr_mappings.append(m("edr_head", head_scope, "$.l_name", "Person", "last_name", "Head"))
+    edr_mappings.append(m("edr_head", head_scope, "$.f_name", "Person", "first_name", "Head"))
+
+    edr_variants.append({
+        "variant_id": "edr_subject_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.Envelope.Body.SubjectDetail2ExtResponse"}
+            ]
+        },
         "mappings": edr_mappings
     })
 
     # ==========================================
-    # 2. DRFO (InfoIncomeSourcesDRFO2Query)
+    # 4. EIS (Passport/Person)
     # ==========================================
-    # Found in 66_DRFO_demo_test and 27_DRFO_test_demo
-    # Assumption on structure: Envelope.Body.InfoIncomeSourcesDRFO2Response...
-    # We map to IncomeRecord
-    drfo_mappings = []
-    # We need to guess the path. Usually it's deep.
-    # Safe bet: $.data..income[*] or similar. Let's try standard X-Road pattern.
-    drfo_scope = "$.data.Envelope.Body.InfoIncomeSourcesDRFO2Response.declarations.declaration[*]"
+    eis_variants = []
+    eis_mappings = []
+    eis_scope = "$.data.root.result"
     
-    # Map to IncomeRecord
-    drfo_mappings.append(m("income", drfo_scope, "$.taxAmount", "IncomeRecord", "tax_amount", "IncRec"))
-    drfo_mappings.append(m("income", drfo_scope, "$.incomeAmount", "IncomeRecord", "income_amount", "IncRec"))
-    drfo_mappings.append(m("income", drfo_scope, "$.incomePaid", "IncomeRecord", "income_paid", "IncRec"))
-    drfo_mappings.append(m("income", drfo_scope, "$.periodId", "IncomeRecord", "period_id", "IncRec"))
-    drfo_mappings.append(m("income", drfo_scope, "$.personId", "IncomeRecord", "person_id", "IncRec"))
+    # Person
+    eis_mappings.append(m("eis_person", eis_scope, "$.unzr", "Person", "unzr", "EisPerson"))
+    eis_mappings.append(m("eis_person", eis_scope, "$.last_name", "Person", "last_name", "EisPerson"))
+    eis_mappings.append(m("eis_person", eis_scope, "$.name_transliteration.first_name_latin", "Person", "first_name_en", "EisPerson"))
+    eis_mappings.append(m("eis_person", eis_scope, "$.date_birth", "Person", "dob", "EisPerson"))
+    eis_mappings.append(m("eis_person", eis_scope, "$.citizenship", "Person", "citizenship", "EisPerson"))
     
-    # Map to TaxAgent (Organization)
-    drfo_mappings.append(m("agent", drfo_scope, "$.orgName", "TaxAgent", "name", "AgentOrg"))
-    drfo_mappings.append(m("agent", drfo_scope, "$.orgCode", "TaxAgent", "org_code", "AgentOrg"))
+    # Document (Passport) - nested list
+    doc_scope = "$.data.root.result.documents[*]"
+    eis_mappings.append(m("eis_doc", doc_scope, "$.number", "Document", "doc_number", "Passport"))
+    eis_mappings.append(m("eis_doc", doc_scope, "$.series", "Document", "doc_series", "Passport"))
+    eis_mappings.append(m("eis_doc", doc_scope, "$.doc_type", "Document", "type", "Passport"))
+    eis_mappings.append(m("eis_doc", doc_scope, "$.date_issue", "Document", "date_issue", "Passport"))
+    eis_mappings.append(m("eis_doc", doc_scope, "$.dep_out", "Organization", "name", "Issuer"))
 
-    variants.append({
-        "variant_id": "drfo_income_v1",
-        "match_predicate": {"registry_code": "Test_ICS_cons", "method_code": "InfoIncomeSourcesDRFO2Query"}, # Matches both services by omitting service_code? Or list both? Predicate logic usually AND.
-        # We need two variants or regex. simplified eval supports exact match. 
-        # Let's add for 66
-        "match_predicate": {"service_code": "66_DRFO_demo_test", "method_code": "InfoIncomeSourcesDRFO2Query"},
-        "mappings": drfo_mappings
+    eis_variants.append({
+        "variant_id": "eis_person_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.root.result.unzr"}
+            ]
+        },
+        "mappings": eis_mappings
     })
-    variants.append({
-        "variant_id": "drfo_income_v2",
-        "match_predicate": {"service_code": "TEST_ICS_cons", "service_code": "27_DRFO_test_demo", "method_code": "InfoIncomeSourcesDRFO2Query"},
-        "mappings": drfo_mappings
-    })
-    # Note: case sensitivity on registry code? "Test_ICS_cons" vs "TEST_ICS_cons"? 
-    # analyze script showed "TEST_ICS_cons" for 27.
-    
+
     # ==========================================
-    # 3. DRACS (Civil Acts)
+    # 5. Land Cadastre (DZK)
     # ==========================================
-    # 3.1 Birth
-    dracs_birth_scope = "$.data.Envelope.Body.GetBirthArByChildNameAndBirthDateResponse.acts.act[*]"
-    variants.append({
-        "variant_id": "dracs_birth",
-        "match_predicate": {"service_code": "3_MJU_DRACS_prod", "method_code": "GetBirthArByChildNameAndBirthDate"},
-        "mappings": [
-            m("event", dracs_birth_scope, "$.actNumber", "CivilEvent", "act_number", "Event"),
-            m("event", dracs_birth_scope, "$.actDate", "CivilEvent", "date", "Event"),
-            # Person (Child)
-            m("child", dracs_birth_scope, "$.child.lastName", "Person", "last_name", "Child"),
-            m("child", dracs_birth_scope, "$.child.firstName", "Person", "first_name", "Child"),
-            m("child", dracs_birth_scope, "$.child.middleName", "Person", "middle_name", "Child"),
-        ]
+    dzk_variants = []
+    dzk_mappings = []
+    dzk_scope = "$.data.result.cadNum[*]"
+    dzk_mappings.append(m("dzk_prop", dzk_scope, "$", "Property", "cad_num", "LandProp"))
+
+    dzk_variants.append({
+        "variant_id": "dzk_land_simple_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.result.cadNum"}
+            ]
+        },
+        "mappings": dzk_mappings
     })
+
+    # ==========================================
+    # REGISTER INSERTION
+    # ==========================================
     
-    # 3.2 Marriage
-    dracs_marr_scope = "$.data.Envelope.Body.GetMarriageArByHusbandNameAndBirthDateResponse.acts.act[*]" 
-    # Note: multiple methods for marriage (ByHusband, ByWife), structure likely similar
-    marr_mappings = [
-        m("event", dracs_marr_scope, "$.actNumber", "CivilEvent", "act_number", "Event"),
-        m("event", dracs_marr_scope, "$.actDate", "CivilEvent", "date", "Event"),
-        m("husband", dracs_marr_scope, "$.husband.lastName", "Person", "last_name", "Husband"),
-        m("wife", dracs_marr_scope, "$.wife.lastName", "Person", "last_name", "Wife"),
+    registers = [
+        {"code": "RRP", "name": "Registry of Real Property", "variants": rrp_variants},
+        {"code": "DRFO", "name": "State Register of Natural Persons (Tax)", "variants": drfo_variants},
+        {"code": "EDR", "name": "Unified State Register of Enterprises", "variants": edr_variants},
+        {"code": "EIS", "name": "Electronic Information System", "variants": eis_variants},
+        {"code": "DZK", "name": "State Land Cadastre", "variants": dzk_variants}
     ]
-    variants.append({ "variant_id": "dracs_marr_husb", "match_predicate": {"method_code": "GetMarriageArByHusbandNameAndBirthDate"}, "mappings": marr_mappings })
-    variants.append({ "variant_id": "dracs_marr_wife", "match_predicate": {"method_code": "GetMarriageArByWifeNameAndBirthDate"}, "mappings": marr_mappings })
-    
-    # 3.3 Divorce
-    div_mappings = [
-        m("event", "$.data.Envelope.Body..acts.act[*]", "$.actNumber", "CivilEvent", "act_number", "Event"),
-         # Generic path .. matches deeper
-        m("p1", "$.data.Envelope.Body..acts.act[*]", "$.husband.lastName", "Person", "last_name", "Husband"),
-    ]
-    variants.append({ "variant_id": "dracs_div_husb", "match_predicate": {"method_code": "GetDivorceArByHusbandNameAndBirthDate"}, "mappings": div_mappings })
-    variants.append({ "variant_id": "dracs_div_wife", "match_predicate": {"method_code": "GetDivorceArByWifeNameAndBirthDate"}, "mappings": div_mappings })
-    
-    # 3.4 Death
-    variants.append({ "variant_id": "dracs_death", "match_predicate": {"method_code": "GetDeathArByFullNameAndBirthDate"}, 
-        "mappings": [
-             m("event", "$.data.Envelope.Body..acts.act[*]", "$.actNumber", "CivilEvent", "act_number", "Event"),
-             m("deceased", "$.data.Envelope.Body..acts.act[*]", "$.subject.lastName", "Person", "last_name", "Deceased"),
-        ] 
-    })
-    
-    # 3.5 Change Name
-    variants.append({ "variant_id": "dracs_changename", "match_predicate": {"method_code": "GetChangeNameArByNewNameAndBirthDate"}, "mappings": [] }) # Placeholder
-    variants.append({ "variant_id": "dracs_changename2", "match_predicate": {"method_code": "GetChangeNameArByOldNameAndBirthDate"}, "mappings": [] }) # Placeholder
 
-    # ==========================================
-    # 4. ERD (Proxy)
-    # ==========================================
-    variants.append({
-        "variant_id": "erd_proxy",
-        "match_predicate": {"service_code": "4_KCS_ERD_demo"},
-        "mappings": [
-            m("grantor", "$.data..grantors.grantor[*]", "$.name", "Person", "full_name", "Grantor"),
-            m("grantor", "$.data..grantors.grantor[*]", "$.inn", "Person", "rnokpp", "Grantor"),
-        ]
-    })
-
-    # ==========================================
-    # 5. CMS (IDP)
-    # ==========================================
-    variants.append({
-        "variant_id": "cms_idp",
-        "match_predicate": {"service_code": "25_CMS_demo"},
-        "mappings": [
-            m("person", "$.data..persons.person[*]", "$.lastName", "Person", "last_name", "IDPerson"),
-            m("person", "$.data..persons.person[*]", "$.docNumber", "Person", "rnokpp", "IDPerson"), # Maybe doc number, not rnokpp?
-        ]
-    })
-
-    # ==========================================
-    # 6. SR (Property)
-    # ==========================================
-    variants.append({
-        "variant_id": "sr_prop",
-        "match_predicate": {"service_code": "24_MJU_SR_prod"},
-        "mappings": [
-            m("prop", "$.data..assets.asset[*]", "$.registrationNumber", "Property", "reg_num", "Asset"),
-            m("prop", "$.data..assets.asset[*]", "$.address", "Property", "cad_num", "Asset"), # Mapping address to cad_num? Risky but filler.
-            m("right", "$.data..assets.asset[*].rights.right[*]", "$.id", "OwnershipRight", "right_id", "Right"),
-        ]
-    })
-
-    # Insert shell
-    reg_schema = {
-        "registry_name": "UnifiedRegistry",
-        "variants": variants,
-        "created_at": now_utc(),
-        "updated_at": now_utc()
-    }
-    coll.replace_one({"registry_name": "UnifiedRegistry"}, reg_schema, upsert=True)
-    print(f"Inserted UnifiedRegistry with {len(variants)} variants.")
+    for reg in registers:
+        reg_schema = {
+            "registry_code": reg["code"],
+            "name": reg["name"],
+            "schema_match": {
+                "canonical_header_fields": {}
+            },
+            "variants": reg["variants"],
+            "created_at": now_utc(),
+            "updated_at": now_utc()
+        }
+        coll.replace_one({"registry_code": reg["code"]}, reg_schema, upsert=True)
+        print(f"Inserted Register: {reg['code']} with {len(reg['variants'])} variants.")
 
 if __name__ == "__main__":
     db = get_db()

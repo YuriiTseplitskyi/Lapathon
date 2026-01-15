@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import uuid
 import hashlib
+from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Set
 
@@ -104,10 +105,30 @@ class IngestionPipeline:
         self._log("read_document", f"Reading raw file: {file_path}", status="success")
         try:
             raw_doc_obj = read_raw_document(file_path)
-            doc_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, file_path + self.run_id))
+            
+            # Stable Doc ID generation & Path Normalization
+            normalized_file_path = file_path
+            if self.settings.data_dir:
+                try:
+                    # Normalize path relative to the PARENT of data_dir, so we include the data_dir name itself (the bucket)
+                    # User wants: 995-ІБ-Д/... if data_dir is .../nabu_data. 
+                    # Actually per user request: "nabu_data/995-ІБ-Д/..." NO wait.
+                    # User said: "instead of .../nabu_data/995-ІБ-Д/request.xml ONLY LIKE 995-ІБ-Д/request.xml"
+                    # User also said "cause the bucket (folder name) is nabu/".
+                    # If `data_dir` points to `.../nabu_data`, then relative_to(data_dir) gives `995-ІБ-Д/...`.
+                    # Let's perform relative_to(data_dir).
+                    p = Path(file_path).resolve()
+                    base = self.settings.data_dir.resolve()
+                    if p.is_relative_to(base):
+                        normalized_file_path = str(p.relative_to(base))
+                except Exception:
+                    pass # Keep absolute if relative fails
+
+            # Doc ID based on normalized path for stability across environments
+            doc_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, normalized_file_path))
             
             raw_content = RawContent(
-                file_path=file_path,
+                file_path=normalized_file_path,
                 content_type=raw_doc_obj.content_type,
                 content_hash=raw_doc_obj.content_hash,
                 encoding=raw_doc_obj.encoding
@@ -216,6 +237,7 @@ class IngestionPipeline:
         
         q_doc = QuarantinedDocument(
             document_id=doc.document_id,
+            file_path=doc.raw.file_path,
             content_hash=doc.raw.content_hash,
             reason=category,
             extra=details
@@ -332,39 +354,39 @@ class IngestionPipeline:
         for rs in self.schema_registry.relationship_schemas:
              for rule in rs.creation_rules:
                  # Check 'when' conditions (e.g. entity_exists)
-                 # Simplified logic: match entities in SAME SCOPE
-                 
-                 from_ref = rule.bind.from_.entity_ref  # Note: using 'from_' alias
-                 to_ref = rule.bind.to.entity_ref
-                 
-                 # Group by scope_root
-                 by_scope = {}
-                 for e in entities:
-                     by_scope.setdefault(e.scope_root, []).append(e)
-                     
-                 for scope_root, scope_entities in by_scope.items():
-                     from_nodes = [e for e in scope_entities if e.entity_ref == from_ref]
-                     to_nodes = [e for e in scope_entities if e.entity_ref == to_ref]
-                     
-                     for fn in from_nodes:
-                         for tn in to_nodes:
-                             # Create Rel
-                             props = {"source_doc": doc_id}
-                             # Apply properties from rule
-                             for p in rule.properties:
-                                 if p.value is not None:
-                                     props[p.name] = p.value
-                                 # value_from support could be added here
-                             
-                             rels.append(RelRecord(
-                                 rel_type=rs.neo4j.type,
-                                 from_label=fn.label,
-                                 from_id=fn.node_id,
-                                 to_label=tn.label,
-                                 to_id=tn.node_id,
-                                 properties=props,
-                                 source_doc=doc_id,
-                                 scope_root=scope_root,
-                                 name=rs.relationship_name
-                             ))
+                from_ref = rule.bind.from_.entity_ref
+                to_ref = rule.bind.to.entity_ref
+                
+                # Global Document Scope Strategy
+                # We link ALL 'from' nodes to ALL 'to' nodes in the document that match the refs.
+                # This handles Parent-Child (Property-Right) and Root-Child (Person-Income) cases 
+                # where simple scope matching fails.
+                # Assumption: One logical tree per document (safe for this dataset).
+                
+                from_nodes = [e for e in entities if e.entity_ref == from_ref]
+                to_nodes = [e for e in entities if e.entity_ref == to_ref]
+                
+                for fn in from_nodes:
+                    for tn in to_nodes:
+                        # Prevent self-loops if needed, though rarely happens with diff labels
+                        if fn.node_id == tn.node_id:
+                            continue
+
+                        # Create Rel
+                        props = {"source_doc": doc_id}
+                        for p in rule.properties:
+                            if p.value is not None:
+                                props[p.name] = p.value
+                        
+                        rels.append(RelRecord(
+                            rel_type=rs.neo4j.type,
+                            from_label=fn.label,
+                            from_id=fn.node_id,
+                            to_label=tn.label,
+                            to_id=tn.node_id,
+                            properties=props,
+                            source_doc=doc_id,
+                            scope_root=fn.scope_root, # Use from_node scope
+                            name=rs.relationship_name
+                        ))
         return rels

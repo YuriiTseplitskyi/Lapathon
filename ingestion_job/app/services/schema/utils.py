@@ -61,6 +61,9 @@ def jp_values(obj: Any, path: str) -> List[Any]:
             for item in cur:
                 if isinstance(item, list):
                     nxt.extend(item)
+                elif item is not None:
+                    # Robustness for XML-to-JSON: treat singleton as list of 1
+                    nxt.append(item)
         else:
             raise ValueError(f"unsupported token: {t}")
         cur = nxt

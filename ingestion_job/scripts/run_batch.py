@@ -43,6 +43,25 @@ def find_files(data_dir: Path) -> List[Path]:
                 files.append(p)
     return files
 
+def process_one_file(file_path_str: str, settings_dict: dict):
+    # Re-init settings and pipeline in worker process
+    # settings_dict comes from main process
+    try:
+        from ingestion_job.app.core.settings import Settings
+        from ingestion_job.app.services.pipeline import IngestionPipeline
+        
+        s = Settings(**settings_dict)
+        # Ensure fresh sinks
+        p = IngestionPipeline(s)
+        try:
+            return p.ingest_file(file_path_str)
+        finally:
+            p.close()
+    except Exception as e:
+        import traceback
+        return {"status": "error", "error": f"{type(e).__name__}: {e}", "traceback": traceback.format_exc()}
+
+
 def run_batch(data_dir_str: str):
     load_env()
     
@@ -51,13 +70,15 @@ def run_batch(data_dir_str: str):
         logger.error(f"Data directory not found: {data_dir}")
         return
 
-    settings = Settings()
+    settings = Settings(data_dir=data_dir)
     # Force mongo/neo4j backend for this test run as per request "TEst it on real loading in neoj4 and mongo db"
     settings.schema_backend = "mongo"
     settings.graph_sink = "neo4j"
     settings.log_backend = "mongo"
     
     pipeline = IngestionPipeline(settings)
+    # Propagate run_id to settings so workers use the same ID
+    settings.run_id = pipeline.run_id
     
     files = find_files(data_dir)
     logger.info(f"Found {len(files)} files to ingest in {data_dir}")
@@ -65,30 +86,51 @@ def run_batch(data_dir_str: str):
     success_count = 0
     fail_count = 0
     
-    try:
-        for i, file_path in enumerate(files):
-            # Skip non-data files if needed, e.g. .json inside schemas dir if we pointed there
-            if "schemas" in str(file_path):
-                continue
-                
-            logger.info(f"[{i+1}/{len(files)}] Ingesting {file_path.name}...")
+    # Serial execution for debugging/safety on DB writes? 
+    # User requested parallel.
+    # We need to be careful with MongoDB/Neo4j connections in forked processes.
+    # Best practice: Initialize Pipeline INSIDE the worker.
+    
+    settings_dict = settings.model_dump() if hasattr(settings, 'model_dump') else settings.dict()
+    
+    # Prepare args
+    # Limit parallelism to avoid blowing up DB connection limits
+    max_workers = 10 
+    
+    import concurrent.futures
+    
+    logger.info(f"Starting parallel ingestion with {max_workers} workers (Run ID: {pipeline.run_id})...")
+    
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # We need a helper function that can be picked. Local functions can't be pickled.
+        # But we can import it if it's in the module.
+        # Actually run_batch.py is a script. We should define `process_one_file` at top level.
+        # But for replace_file_content... let's assume we can add it or use a trick.
+        # The trick: we rewrite the whole file or huge chunk.
+        
+        # Mapping properties
+        futures = {executor.submit(process_one_file, str(p), settings_dict): p for p in files}
+        
+        for future in concurrent.futures.as_completed(futures):
+            fpath = futures[future]
             try:
-                result = pipeline.ingest_file(str(file_path))
+                result = future.result()
                 status = result.get("status")
                 if status == "success":
                     success_count += 1
-                    logger.info(f"  -> SUCCESS (DocID: {result.get('doc_id')})")
+                    logger.info(f"[{success_count+fail_count}/{len(files)}] SUCCESS {fpath.name}")
                 else:
                     fail_count += 1
-                    logger.warning(f"  -> {status.upper()}: {result.get('reason') or result.get('error')}")
+                    err_msg = result.get("error") or result.get("reason")
+                    logger.warning(f"[{success_count+fail_count}/{len(files)}] {status.upper()} {fpath.name}: {err_msg}")
+                    if "traceback" in result:
+                         logger.debug(f"Traceback for {fpath.name}:\n{result['traceback']}")
             except Exception as e:
                 fail_count += 1
-                logger.error(f"  -> EXCEPTION: {e}")
-                
-    finally:
-        pipeline.close()
-        logger.info("Batch ingestion finished.")
-        logger.info(f"Total: {len(files)}, Success: {success_count}, Failed/Quarantined: {fail_count}")
+                logger.error(f"  -> EXCEPTION {fpath.name}: {e}")
+
+    logger.info("Batch ingestion finished.")
+    logger.info(f"Total: {len(files)}, Success: {success_count}, Failed/Quarantined: {fail_count}")
 
 if __name__ == "__main__":
     import argparse

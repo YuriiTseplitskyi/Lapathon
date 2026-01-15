@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 IngestionStatus = Literal["pending", "processed", "quarantined", "failed", "skipped"]
 ParseStatus = Literal["ok", "parse_error", "corrupt", "unsupported"]
-FailureCategory = Literal["schema_not_found", "variant_ambiguous", "access_denied", "immutable_conflict", "mapping_error", "other"]
+FailureCategory = Literal["schema_not_found", "variant_ambiguous", "access_denied", "immutable_conflict", "mapping_error", "parse_error", "other"]
 RunStatus = Literal["running", "success", "warning", "failed", "quarantined"]
 
 
@@ -158,6 +158,7 @@ class QuarantinedDocument(BaseModel):
     MongoDB collection: quarantined_documents
     """
     document_id: str
+    file_path: Optional[str] = None
     content_hash: str
     reason: str
     excerpt: Optional[str] = None

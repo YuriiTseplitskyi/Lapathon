@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     # defaulted to relative paths from this file if not set in env
     schemas_dir: Path = Path(__file__).resolve().parents[2] / "data" / "schemas"
     out_dir: Path = Path(__file__).resolve().parents[2] / "data" / "out"
+    data_dir: Optional[Path] = None
 
     # Mongo
     mongo_uri: str = "mongodb://localhost:27017"

@@ -32,7 +32,11 @@ class JsonAdapter(CanonicalAdapter):
         data: Any = None
         
         try:
-            obj = json.loads(raw_doc.raw_bytes.decode(raw_doc.encoding, errors="replace"))
+            raw_str = raw_doc.raw_bytes.decode(raw_doc.encoding, errors="replace")
+            # Cleanup trailing commas
+            import re
+            raw_str = re.sub(r',(\s*[\]}])', r'\1', raw_str)
+            obj = json.loads(raw_str)
             data = obj
             meta.update(heuristic_meta_from_json(obj))
         except Exception as e:
