@@ -274,10 +274,17 @@ def init_relationships(db):
     # Issuer -> Document?
     rels.append(make_rel_schema("Organization_ISSUED_Document", "ISSUED", "Organization", "Document", [], from_ref="Issuer", to_ref="Passport"))
 
-    # Legacy / Other
-    # rels.append(make_rel_schema("CourtCase_IN_COURT_Court", "IN_COURT", "CourtCase", "Court"))
-    # rels.append(make_rel_schema("CourtDecision_FOR_CASE_CourtCase", "FOR_CASE", "CourtDecision", "CourtCase"))
+    # ERD Relationships (Power of Attorney / Vehicle)
+    # Grantor -> Vehicle
+    rels.append(make_rel_schema("Person_OWNS_VEHICLE_Vehicle", "OWNS_VEHICLE", "Person", "Vehicle", ["role"], from_ref="Grantor", to_ref="ProxyVehicle"))
+    
+    # Court Relationships
+    rels.append(make_rel_schema("CourtCase_IN_COURT_Court", "IN_COURT", "CourtCase", "Court", [], from_ref="CaseNode", to_ref="CourtNode"))
+    rels.append(make_rel_schema("CourtDecision_FOR_CASE_CourtCase", "FOR_CASE", "CourtDecision", "CourtCase", [], from_ref="DecisionNode", to_ref="CaseNode"))
+    
+    # Legacy / Other (can add Period if needed later)
     # rels.append(make_rel_schema("IncomeRecord_FOR_PERIOD_Period", "FOR_PERIOD", "IncomeRecord", "Period"))
+
 
     for r in rels:
         coll.replace_one({"relationship_name": r["relationship_name"]}, r, upsert=True)
@@ -495,6 +502,96 @@ def init_registers(db: Database):
     })
 
     # ==========================================
+    # 6. Civil Status Registry (DRACS)
+    # ==========================================
+    dracs_variants = []
+    dracs_mappings = []
+    
+    # Note: Most DRACS responses in dataset are empty (ResultData is empty XML)
+    # But we define the schema for when data exists
+    # Service: GetMarriageAr, GetDivorceAr, GetBirthAr, etc.
+    # These return AR_LIST with ACT records
+    
+    # Simplified: We'll just detect DRACS and skip for now since data is empty
+    # Legacy likely had manual CSV data
+    dracs_variants.append({
+        "variant_id": "dracs_empty_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.Envelope.Body.ArServiceAnswer"}
+            ]
+        },
+        "mappings": []  # Empty - no data to extract
+    })
+
+    # ==========================================
+    # 7. Power of Attorney / Vehicle (ERD)
+    # ==========================================
+    erd_variants = []
+    erd_mappings = []
+    
+    # Grantor/Representative
+    grantor_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Grantor"
+    erd_mappings.append(m("erd_grantor", grantor_scope, "$.Name", "Person", "full_name", "Grantor"))
+    erd_mappings.append(m("erd_grantor", grantor_scope, "$.Code", "Person", "rnokpp", "Grantor"))
+    
+    rep_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Representative"
+    erd_mappings.append(m("erd_rep", rep_scope, "$.Name", "Person", "full_name", "Representative"))
+    erd_mappings.append(m("erd_rep", rep_scope, "$.Code", "Person", "rnokpp", "Representative"))
+    
+    # Vehicle Property
+    veh_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Properties.Property[?(@.Property_type=='1')]"
+    erd_mappings.append(m("erd_vehicle", veh_scope, "$.Government_registration_number", "Vehicle", "registration_number", "ProxyVehicle"))
+    erd_mappings.append(m("erd_vehicle", veh_scope, "$.Serial_number", "Vehicle", "vin", "ProxyVehicle"))
+    erd_mappings.append(m("erd_vehicle", veh_scope, "$.Description", "Vehicle", "description", "ProxyVehicle"))
+    
+    erd_variants.append({
+        "variant_id": "erd_poa_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse"}
+            ]
+        },
+        "mappings": erd_mappings
+    })
+
+    # ==========================================
+    # 8. Court Decisions
+    # ==========================================
+    court_variants = []
+    court_mappings = []
+    
+    # Court
+    court_scope = "$.data.array[*]"
+    court_mappings.append(m("court_node", court_scope, "$.courtId", "Court", "court_id", "CourtNode"))
+    court_mappings.append(m("court_node", court_scope, "$.courtName", "Court", "court_name", "CourtNode"))
+    
+    # CourtCase
+    court_mappings.append(m("case_node", court_scope, "$.caseNum", "CourtCase", "case_number", "CaseNode"))
+    court_mappings.append(m("case_node", court_scope, "$.courtId", "CourtCase", "court_id", "CaseNode"))
+    
+    # CourtDecision
+    court_mappings.append(m("decision_node", court_scope, "$.regNum", "CourtDecision", "reg_num", "DecisionNode"))
+    court_mappings.append(m("decision_node", court_scope, "$.docDate", "CourtDecision", "decision_date", "DecisionNode"))
+    court_mappings.append(m("decision_node", court_scope, "$.docTypeName", "CourtDecision", "decision_type", "DecisionNode"))
+    court_mappings.append(m("decision_node", court_scope, "$.judgeFio", "CourtDecision", "judge_name", "DecisionNode"))
+    court_mappings.append(m("decision_node", court_scope, "$.caseNum", "CourtDecision", "case_number", "DecisionNode"))
+    
+    # Person (involved)
+    court_mappings.append(m("involved_person", court_scope, "$.PIB", "Person", "full_name", "CourtPerson"))
+    court_mappings.append(m("involved_person", court_scope, "$.rnokpp", "Person", "rnokpp", "CourtPerson"))
+    
+    court_variants.append({
+        "variant_id": "court_decision_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.array[0].courtId"}
+            ]
+        },
+        "mappings": court_mappings
+    })
+
+    # ==========================================
     # REGISTER INSERTION
     # ==========================================
     
@@ -503,7 +600,10 @@ def init_registers(db: Database):
         {"code": "DRFO", "name": "State Register of Natural Persons (Tax)", "variants": drfo_variants},
         {"code": "EDR", "name": "Unified State Register of Enterprises", "variants": edr_variants},
         {"code": "EIS", "name": "Electronic Information System", "variants": eis_variants},
-        {"code": "DZK", "name": "State Land Cadastre", "variants": dzk_variants}
+        {"code": "DZK", "name": "State Land Cadastre", "variants": dzk_variants},
+        {"code": "DRACS", "name": "Civil Status Registry", "variants": dracs_variants},
+        {"code": "ERD", "name": "Power of Attorney Registry", "variants": erd_variants},
+        {"code": "COURT", "name": "Court Decisions", "variants": court_variants}
     ]
 
     for reg in registers:
