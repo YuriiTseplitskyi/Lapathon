@@ -1,336 +1,179 @@
-MongoDB collection: register_schemas
-shape:
+# Schema Documentation (v2)
+
+This document describes the schema architecture for the Ingestion Service, stored in MongoDB collections.
+
+> **CHANGES vs LEGACY (Jan 2026)**
+> *   **Registries**: Replaced single `Test_ICS_cons` with 5 real registries: **RRP** (Property), **DRFO** (Tax), **EDR** (Business), **EIS** (Passport), **DZK** (Land).
+> *   **Entities**: Added `IncomeRecord`, `OwnershipRight`, `Property`, `Document`, `Address`, `VehicleRegistration`, `Activity`, `TaxAgent`, `Identifier`.
+> *   **Relationships**: Added domain-specific edges like `PAID_INCOME`, `HAS_RIGHT`, `LOCATED_AT`, `HAS_DOCUMENT`, `ISSUED`, `HAS_ADDRESS`.
+> *   **Predicates**: Switched from strict header matching to `json_exists` predicates for robust detection of legacy `answer.xml` files.
+
+---
+
+## 1. MongoDB Collection: `register_schemas`
+
+Defines how to parse and map raw registry responses into Canonical JSON and then into Entities.
+
+### Shape
+
+```json
 {
   "_id": "ObjectId",
-  "registry_code": "Test_ICS_cons",
-  "service_code": "3_MJU_DRACS_prod",
-  "method_code": "GetBirthArByChildNameAndBirthDate",
-
-  "source": {
-    "raw_formats": ["soap_xml"],
-    "canonical_format": "canonical_json_v1"
-  },
-
-  "status": "active|draft|deprecated",
-  "version": 3,
-
-  "schema_match": {
-    "canonical_header_fields": {
-      "registry_code": "$.meta.registry_code",
-      "service_code": "$.meta.service_code",
-      "method_code": "$.meta.method_code"
-    }
-  },
-
+  "registry_code": "RRP",
+  "name": "Registry of Real Property",
+  
   "variants": [
     {
-      "variant_id": "v3_main",
-      "priority": 100,
-
-    "match_predicate": {
+      "variant_id": "rrp_v1",
+      "match_predicate": {
         "all": [
-          { "type": "json_exists", "path": "$.document.birthAct" },
-          { "type": "json_equals", "path": "$.meta.result_code", "value": "1" }
-        ],
-        "none": [
-          { "type": "json_exists", "path": "$.meta.error" }
+          { "type": "json_equals", "path": "$.data.array.entity", "value": "rrpExch_external" }
         ]
       },
-
-    "mappings": [
+      
+      "mappings": [
         {
-          "mapping_id": "birthact_actnumber",
-          "scope": { "foreach": "$.document.birthAct[*]" },
-          "source": { "json_path": "$.actNumber" },
-
-    "targets": [
-            { "entity": "BirthAct", "property": "actNumber" },
-            {
-              "entity": "Person",
-              "property": "birthActNumber",
-              "entity_ref": "ChildPerson"
-            }
-          ],
-
-    "required": false,
-          "on_missing": "skip"
+          "mapping_id": "prop_main",
+          "scope": { "foreach": "$.data.array.resultData.result[*].realty[*]" },
+          "source": { "json_path": "$.regNum" },
+          "targets": [
+            { "entity": "Property", "property": "reg_num", "entity_ref": "Prop" }
+          ]
+        },
+        {
+          "mapping_id": "right_node",
+          "scope": { "foreach": "$.data.array.resultData.result[*].realty[*].properties[*]" },
+          "source": { "json_path": "$.rnNum" },
+          "targets": [
+            { "entity": "OwnershipRight", "property": "rn_num", "entity_ref": "Right" }
+          ]
         }
-      ],
-
-    "emits": {
-        "entities": ["Person", "BirthAct", "RegistryService"],
-        "relationships": ["PERSON_HAS_CIVIL_EVENT"]
-      }
+      ]
     }
   ],
-
-  "entity_schema_refs": ["Person", "BirthAct", "RegistryService"],
-  "relationship_schema_refs": ["PERSON_HAS_CIVIL_EVENT"],
-
   "created_at": "ISODate",
   "updated_at": "ISODate"
 }
+```
 
+## 2. MongoDB Collection: `entity_schemas`
 
-MongoDB collection: entity_schemas
-shape:
+Defines the node labels, properties, and identity resolution rules.
+
+### Current Entities (17)
+
+| Entity | Description | Identity Key(s) |
+| :--- | :--- | :--- |
+| **Person** | Natural Person | `rnokpp` (Tax ID), `full_name` |
+| **Organization** | Legal Entity (Company) | `org_code` (EDRPOU) |
+| **Property** | Real Estate | `reg_num` |
+| **OwnershipRight** | Right to Property | *Composite* |
+| **IncomeRecord** | Tax/Income details | *Composite* |
+| **Address** | Physical Address | *None* (Log-only) |
+| **Document** | Passport/ID Card | `doc_number` + `doc_series` |
+| **Vehicle** | Car/Vehicle | `vin` |
+| **VehicleRegistration** | Vehicle Reg Event | *None* |
+| **CivilEvent** | Marriage/Birth/Death | `act_number` |
+| **CourtCase** | Judicial Case | *None* |
+| **CourtDecision** | Judgment | *None* |
+| **TaxAgent** | Org paying tax | `org_code` |
+| **Activity** | NACE/KVED Code | *None* |
+| **Period** | Time Period | *None* |
+| **Identifier** | Generic ID | *None* |
+| **Court** | Court Entity | *None* |
+
+### Shape Example
+
+```json
 {
   "_id": "ObjectId",
   "entity_name": "Person",
   "neo4j": {
     "labels": ["Person"],
-    "primary_key": "person_id",
-    "constraints": [
-      { "type": "unique", "property": "person_id" },
-      { "type": "index", "property": "rnokpp" }
-    ]
+    "primary_key": "node_id",
+    "constraints": []
   },
-
   "identity_keys": [
-    { "priority": 1, "when": { "exists": ["rnokpp"] }, "properties": ["rnokpp"] },
-    { "priority": 2, "when": { "exists": ["unzr"] }, "properties": ["unzr"] },
-    { "priority": 3, "when": { "exists": ["docType", "docSeries", "docNumber"] }, "properties": ["docType", "docSeries", "docNumber"] }
+    { 
+      "priority": 10, 
+      "when": { "exists": ["rnokpp"] }, 
+      "properties": ["rnokpp"] 
+    },
+    { 
+      "priority": 20, 
+      "when": { "exists": ["full_name"] }, 
+      "properties": ["full_name"] 
+    }
   ],
-
   "properties": [
-    { "name": "rnokpp", "type": "string", "is_required": false, "change_type": "immutable", "normalize": ["trim"] },
-    { "name": "fullName", "type": "string", "is_required": false, "change_type": "rarely_changed", "normalize": ["trim", "collapse_spaces"] },
-    { "name": "firstName", "type": "string", "is_required": false, "change_type": "rarely_changed" },
-    { "name": "lastName", "type": "string", "is_required": false, "change_type": "rarely_changed" },
-    { "name": "birthDate", "type": "date", "is_required": false, "change_type": "immutable" }
+    { "name": "rnokpp", "type": "string", "change_type": "rarely_changed" },
+    { "name": "full_name", "type": "string", "change_type": "rarely_changed" },
+    { "name": "birth_date", "type": "string", "change_type": "rarely_changed" }
   ],
-
   "merge_policy": {
     "default": "prefer_non_null",
-    "immutable_conflict": "quarantine_and_alert",
-    "rarely_changed_conflict": "log_warning_and_keep_existing",
-    "dynamic_conflict": "take_latest_by_source_timestamp"
-  },
-
-  "source_priority": [
-    { "registry_code": "Test_ICS_cons", "weight": 10 }
-  ],
-
-  "version": 1,
-  "status": "active|draft|deprecated",
-  "created_at": "ISODate",
-  "updated_at": "ISODate"
-}
-
-
-
-MongoDB collection: relationship_schemas
-shape:
-{
-  "_id": "ObjectId",
-  "relationship_name": "PERSON_HAS_VEHICLE",
-  "neo4j": {
-    "type": "HAS_VEHICLE",
-    "direction": "out",
-    "from_label": "Person",
-    "to_label": "Vehicle"
-  },
-
-  "endpoints": {
-    "from_entity": "Person",
-    "to_entity": "Vehicle"
-  },
-
-  "creation_rules": [
-    {
-      "rule_id": "link_by_doc_context",
-      "when": { "all": [
-        { "type": "entity_exists", "entity_ref": "GrantorPerson" },
-        { "type": "entity_exists", "entity_ref": "VehicleFromPropertiesBlock" }
-      ]},
-
-    "bind": {
-        "from": { "entity_ref": "GrantorPerson" },
-        "to": { "entity_ref": "VehicleFromPropertiesBlock" }
-      },
-
-    "properties": [
-        { "name": "sourceDocumentId", "value_from": { "context": "document_id" } },
-        { "name": "confidence", "value": 0.8 }
-      ]
-    }
-  ],
-
-  "uniqueness": {
-    "strategy": "unique_per_endpoints_and_type",
-    "keys": ["from.person_id", "to.vehicle_id", "neo4j.type"]
-  },
-
-  "merge_policy": {
-    "on_existing": "merge_properties_prefer_non_null"
-  },
-
-  "version": 1,
-  "status": "active|draft|deprecated",
-  "created_at": "ISODate",
-  "updated_at": "ISODate"
-}
-
-
-
-MongoDB collection: ingestion_runs
-shape:
-{
-  "_id": "ObjectId",
-  "run_id": "uuid",
-  "trigger": "file_drop|manual_replay|scheduler",
-
-  "started_at": "ISODate",
-  "finished_at": "ISODate",
-  "status": "running|success|warning|failed|quarantined",
-
-  "input": {
-    "document_id": "uuid",
-
-    "raw": {
-      "file_path": "data/A/V/a.xml",
-      "content_type": "text/xml",
-      "content_hash": "sha256:..."
-    },
-
-    "canonical": {
-      "format": "canonical_json_v1",
-      "document_ref": "ObjectId",
-      "hash": "sha256:..."
-    }
-  },
-
-  "schema_resolution": {
-    "registry_code": "Test_ICS_cons",
-    "service_code": "4_KCS_ERD_demo",
-    "method_code": "getProxyGrantorNameOrIDN",
-    "register_schema_id": "ObjectId",
-    "variant_id": "v3_main"
-  },
-
-  "metrics": {
-    "entities_extracted": 12,
-    "entities_upserted": 12,
-    "relationships_created": 9,
-    "immutable_conflicts": 0
-  },
-
-  "next_action": "none|define_schema|fix_variant|investigate_merge"
-}
-
-
-
-MongoDB collection: ingested_documents
-shape:
-{
-  "_id": "ObjectId",
-  "document_id": "uuid",
-
-  "raw": {
-    "file_path": "data/A/V/a.xml",
-    "source_system": "drive|s3|fs",
-    "content_type": "text/xml",
-    "encoding": "utf-8",
-    "content_hash": "sha256:..."
-  },
-
-  "canonical": {
-    "format": "canonical_json_v1",
-    "document_ref": "ObjectId",
-    "hash": "sha256:..."
-  },
-
-  "discovered_at": "ISODate",
-
-  "classification": {
-    "registry_code": "Test_ICS_cons",
-    "service_code": "4_KCS_ERD_demo",
-    "method_code": "getProxyGrantorNameOrIDN"
-  },
-
-  "schema_ref": {
-    "register_schema_id": "ObjectId",
-    "variant_id": "v3"
-  },
-
-  "parse_status": "ok|parse_error|corrupt|unsupported",
-  "ingestion_status": "pending|processed|quarantined|failed|skipped",
-
-  "failure": {
-    "category": "schema_not_found|variant_ambiguous|access_denied|immutable_conflict",
-    "message": "string",
-    "details": {}
-  },
-
-  "neo4j_write_summary": {
-    "nodes_created": 0,
-    "nodes_updated": 0,
-    "rels_created": 0,
-    "rels_updated": 0
-  },
-
-  "run_id": "uuid",
-  "last_updated_at": "ISODate"
-}
-
-
-
-MongoDB collection: ingestion_logs
-shape:
-{
-  "_id": "ObjectId",
-  "run_id": "uuid",
-  "document_id": "uuid",
-  "ts": "ISODate",
-
-  "step": "schema_lookup",
-  "stage": "start|end",
-  "status": "success|warning|error|skipped",
-
-  "message": "Selected register schema ...",
-  "details": {
-    "registry_code": "Test_ICS_cons",
-    "service_code": "3_MJU_DRACS_prod",
-    "candidates": [
-      { "schema_id": "ObjectId", "variant_id": "v3_main", "score": 0.97 }
-    ]
-  },
-
-  "lineage": {
-    "input_ref": { "file_path": "...", "content_hash": "sha256:..." },
-    "output_ref": { "neo4j_tx_id": "optional", "entity_count": 12 }
-  },
-
-  "next_action": {
-    "type": "none|notify_dev|open_ticket|quarantine_document|add_schema_variant",
-    "severity": "info|low|medium|high|critical",
-    "suggested_owner": "data_eng|backend|ml",
-    "suggested_text": "Variant ambiguous: 2 variants matched..."
+    "immutable_conflict": "quarantine_and_alert"
   }
 }
+```
 
+## 3. MongoDB Collection: `relationship_schemas`
 
-MongoDB collection: quarantined_documents
-shape:
+Defines how entities are linked in the graph.
+
+### Current Relationships
+
+| Relationship | From | To | Use Case |
+| :--- | :--- | :--- | :--- |
+| **RIGHT_TO** | OwnershipRight | Property | Connects a right (e.g. Ownership) to the Asset |
+| **HAS_RIGHT** | Person / Org | OwnershipRight | Connects the Owner to their Right |
+| **PAID_INCOME** | Organization / TaxAgent | IncomeRecord | Source of income |
+| **HAS_INCOME** | Person | IncomeRecord | Recipient of income |
+| **LOCATED_AT** | Property | Address | Physical location |
+| **HAS_ADDRESS** | Person / Org | Address | Registered address |
+| **HAS_DOCUMENT** | Person | Document | Passport/ID ownership |
+| **ISSUED** | Organization | Document | Issuer of ID |
+| **OWNS_VEHICLE** | Person | Vehicle | Vehicle ownership |
+| **HAS_REGISTRATION** | Vehicle | VehicleRegistration | Registration history |
+| **IN_COURT** | CourtCase | Court | Case jurisdiction |
+
+### Shape Example
+
+```json
 {
-  "document_id": "uuid",
-  "content_hash": "sha256:...",
-  "reason": "variant_ambiguous",
-  "excerpt": "`<BirthAct>`...`</BirthAct>`",
-  "created_at": "ISODate",
-  "status": "open|resolved|ignored",
-  "owner": "data_eng"
+  "_id": "ObjectId",
+  "relationship_name": "Person_HAS_RIGHT_OwnershipRight",
+  "neo4j": {
+    "type": "HAS_RIGHT",
+    "direction": "out",
+    "from_label": "Person",
+    "to_label": "OwnershipRight"
+  },
+  "endpoints": {
+    "from_entity": "Person",
+    "to_entity": "OwnershipRight"
+  },
+  "creation_rules": [
+    {
+      "rule_id": "default",
+      "bind": {
+        "from": { "entity_ref": "Owner" },
+        "to": { "entity_ref": "Right" }
+      },
+      "properties": [
+        { "name": "role" }
+      ]
+    }
+  ]
 }
+```
 
-MongoDB collection: schema_change_requests
-shape:
-{
-  "request_id": "uuid",
-  "registry_code": "Test_ICS_cons",
-  "service_code": "4_KCS_ERD_demo",
-  "method_code": "getProxyGrantorNameOrIDN",
-  "proposed_changes": { "add_variant": { "...": "..." } },
-  "evidence": { "documents": ["uuid1", "uuid2"] },
-  "status": "proposed|approved|rejected|merged",
-  "created_at": "ISODate"
-}
+## 4. Ingestion & Quarantine
+
+### `ingestion_runs`
+Tracks the lifecycle of a single file execution.
+
+### `quarantined_documents`
+Stores documents that failed schema resolution or parsing.
+*   **Reason**: `No matching schema variant found` (common for unknown legacy files), `json_parse_error`, etc.
+*   **Debug**: Check the `extra` field for candidate scores and predicates evaluated.
