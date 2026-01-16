@@ -9,9 +9,11 @@ from pydantic import BaseModel, Field
 # -------------------------------------------------------------------------
 
 class JsonPredicate(BaseModel):
-    type: Literal["json_exists", "json_equals"]
+    type: Literal["json_exists", "json_equals", "json_regex", "json_in"]
     path: str
     value: Optional[Any] = None
+    values: Optional[List[Any]] = None
+    pattern: Optional[str] = None
 
 class MatchPredicate(BaseModel):
     all: List[JsonPredicate] = []
@@ -21,11 +23,13 @@ class MappingTarget(BaseModel):
     entity: str
     property: str
     entity_ref: Optional[str] = None
+    transform: Optional[Dict[str, Any]] = None
 
 class VariantMapping(BaseModel):
     mapping_id: Optional[str] = None
     scope: Dict[str, str] = {}  # e.g. {"foreach": "$.document.birthAct[*]"}
-    source: Dict[str, str] = {} # e.g. {"json_path": "$.actNumber"}
+    filter: Optional[MatchPredicate] = None
+    source: Dict[str, Any] = {} # e.g. {"json_path": "$.actNumber"}
     targets: List[MappingTarget] = []
     required: bool = False
     on_missing: Literal["skip", "error", "default"] = "skip"

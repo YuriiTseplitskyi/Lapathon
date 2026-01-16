@@ -60,12 +60,16 @@ def apply_transforms(val: Any, transforms: List[str]) -> Any:
             except Exception: v = None
     return v
 
+from ingestion_job.app.services.storage.minio_client import MinioClient
+import base64
+
 class IngestionPipeline:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.settings.ensure_out_dirs()
         self.run_id = settings.run_id or str(uuid.uuid4())
 
+        self.minio_client = MinioClient() # Init MinIO
         self.canonicalizer = CanonicalizerService()
 
         # Schema Registry
@@ -285,13 +289,31 @@ class IngestionPipeline:
             
             # For each item in scope
             for idx, item in enumerate(root_items):
-                scope_root = f"{doc_id}:{m.mapping_id or 'map'}:{idx}"
+                # Use hash of the FOREACH path to group items from same list
+                # This explicitly ignores mapping_id to allow merging different rules targeting same object
+                scope_hash = hashlib.md5((m.scope.get("foreach") or "root").encode()).hexdigest()[:8]
+                scope_root = f"{doc_id}:{scope_hash}:{idx}"
                 
+                # Check Filter
+                if m.filter:
+                    # Convert Pydantic model to dict for eval_predicate
+                    # We use exclude_none=True so we don't pass None fields to logic that might iterate keys
+                    pred_dict = m.filter.dict()
+                    matched, _, _ = eval_predicate(item, pred_dict)
+                    if not matched:
+                        continue
+
                 # Targets
                 for t in m.targets:
                     val = None
                     if "json_path" in m.source:
-                        val = jp_first(item, m.source["json_path"])
+                        # Support root context evaluation for cross-scope JSONPath access
+                        # When use_root_context=True, evaluate path against full document
+                        # instead of the current scoped item (enables accessing parent fields)
+                        if m.source.get("use_root_context"):
+                            val = jp_first(canonical_doc, m.source["json_path"])
+                        else:
+                            val = jp_first(item, m.source["json_path"])
                     
                     label = t.entity
                     prop = t.property
@@ -311,15 +333,96 @@ class IngestionPipeline:
                         )
                         instances.append(inst)
                     
-                    if val is not None:
-                        inst.properties[prop] = val
+                    
+                    # Apply explicit transformations in schema
+                    if val is not None and t.transform:
+                        from ingestion_job.app.services.schema.transform import apply_transformation
+                        val = apply_transformation(val, t.transform)
+                    
+                    # Store property even if None (Consistency)
+                    inst.properties[prop] = val
                     inst.properties["source_doc_id"] = doc_id
 
-        # Post Process IDs
+                    # -------------------------------------------------
+                    # MinIO Upload Interception
+                    # -------------------------------------------------
+                    if prop == "content_base64" and val:
+                        # Handle Court Decision HTML
+                        try:
+                            # Decode
+                            html_bytes = base64.b64decode(val)
+                            
+                            # Generate Filename & Hash
+                            content_hash = hashlib.sha256(html_bytes).hexdigest()
+                            filename = f"{doc_id}_{content_hash[:8]}.html"
+                            
+                            # Upload
+                            url = self.minio_client.upload_file(
+                                filename=filename, 
+                                data=html_bytes, 
+                                content_type="text/html",
+                                bucket_name=self.settings.minio_bucket_court
+                            )
+                            
+                            if url:
+                                inst.properties["content_url"] = url
+                                inst.properties["content_hash"] = content_hash
+                                # Snippet for search
+                                try:
+                                    text_snippet = html_bytes.decode("utf-8", errors="ignore")[:500]
+                                    inst.properties["content_snippet"] = text_snippet
+                                except:
+                                    pass
+                                
+                            # Clean up heavy base64 from properties to save DB space
+                            inst.properties.pop("content_base64", None)
+                            
+                        except Exception as e:
+                            print(f"Failed to process content_base64 for {doc_id}: {e}")
+                        finally:
+                             # ALWAYS remove the heavy base64 to prevent DB bloat
+                             inst.properties.pop("content_base64", None)
+
+                    elif prop == "photo_base64" and val:
+                        # Handle Person Photo
+                        try:
+                            photo_bytes = base64.b64decode(val)
+                            
+                            # Generate unique name (using document ID + index if needed, or hash)
+                            photo_hash = hashlib.sha256(photo_bytes).hexdigest()
+                            filename = f"{doc_id}_{photo_hash[:8]}.jpg"
+                            
+                            url = self.minio_client.upload_file(
+                                filename=filename, 
+                                data=photo_bytes, 
+                                content_type="image/jpeg",
+                                bucket_name=self.settings.minio_bucket_photos
+                            )
+                            
+                            if url:
+                                inst.properties["photo_url"] = url
+                                inst.properties["has_photo"] = True
+                            
+                        except Exception as e:
+                            print(f"Failed to process photo_base64 for {doc_id}: {e}")
+                        finally:
+                            # ALWAYS remove the heavy base64
+                            inst.properties.pop("photo_base64", None)
+                    # -------------------------------------------------
+
+        # Filter out entities with no meaningful properties (Junk Nodes)
+        valid_instances = []
         for inst in instances:
+            # Check if any property (excluding source_doc_id) has a non-None value
+            meaningful_props = {k: v for k, v in inst.properties.items() if k != "source_doc_id" and v is not None}
+            if meaningful_props:
+                valid_instances.append(inst)
+
+        # Post Process IDs
+        for inst in valid_instances:
             self._finalize_entity_id(inst, doc_id)
             
-        return instances
+        return valid_instances
 
     def _finalize_entity_id(self, inst: EntityInstance, doc_id: str) -> None:
         es = self.schema_registry.entity_schemas.get(inst.label)
@@ -328,25 +431,51 @@ class IngestionPipeline:
              # Fallback
              inst.node_id = f"DOCSCOPED:{doc_id}:{inst.scope_id}"
              return
-             
-        # Check Identity Keys
-        matched_kv = []
-        for key_def in es.identity_keys:
-             # Check 'when' - naive implementation for "exists"
-             req_fields = key_def.when.get("exists", [])
-             if all(inst.properties.get(f) is not None for f in req_fields):
-                 # Use these properties
-                 parts = [str(inst.properties.get(p)) for p in key_def.properties]
-                 matched_kv = parts
-                 break # priority order
+
+        # Explicit Hardcoded Logic for Person/Organization to improve Deduplication
+        # (This overrides generic configuration for now to ensure quality)
+        raw_id = None
         
-        if matched_kv:
-             # Deterministic ID based on identity key
-             raw_id = "|".join(matched_kv)
+        # 1. RNOKPP (Tax ID) - Strongest
+        if inst.properties.get("rnokpp"):
+            raw_id = str(inst.properties["rnokpp"])
+        
+        # 2. EDRPOU (Org Code) - Strongest for Org
+        elif inst.properties.get("edrpou"):
+            raw_id = str(inst.properties["edrpou"])
+            
+        # 3. UNZR (Demographic Registry) - Secondary for Person
+        elif inst.properties.get("unzr"):
+            raw_id = str(inst.properties["unzr"])
+            
+        # 4. VIN (Vehicle)
+        elif inst.properties.get("vin"):
+            raw_id = str(inst.properties["vin"])
+            
+        # 5. Composite: Full Name + Birth Date
+        elif inst.properties.get("full_name") and inst.properties.get("birth_date"):
+            raw_id = f"{inst.properties['full_name']}|{inst.properties['birth_date']}"
+
+        if raw_id:
+             # Deterministic ID
              inst.node_id = hashlib.sha256(raw_id.encode()).hexdigest()
+             inst.properties["id"] = inst.node_id # Ensure ID is stored as property too
         else:
              # Fallback to doc-scoped ID
-             inst.node_id = f"DOCSCOPED:{doc_id}:{inst.scope_id}"
+             # Try generic keys if hardcoded fail?
+             matched_kv = []
+             for key_def in es.identity_keys:
+                 req_fields = key_def.when.get("exists", [])
+                 if all(inst.properties.get(f) is not None for f in req_fields):
+                     parts = [str(inst.properties.get(p)) for p in key_def.properties]
+                     matched_kv = parts
+                     break
+             
+             if matched_kv:
+                 raw_val = "|".join(matched_kv)
+                 inst.node_id = hashlib.sha256(raw_val.encode()).hexdigest()
+             else:
+                 inst.node_id = f"DOCSCOPED:{doc_id}:{inst.scope_id}"
 
     def _build_relationships(self, doc_id: str, entities: List[EntityInstance]) -> List[RelRecord]:
         rels: List[RelRecord] = []

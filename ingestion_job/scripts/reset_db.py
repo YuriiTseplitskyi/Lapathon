@@ -32,12 +32,34 @@ def reset_mongo():
 
 def reset_neo4j():
     print(f"Resetting Neo4j...")
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    with driver.session() as session:
-        result = session.run("MATCH (n) DETACH DELETE n")
-        summary = result.consume()
-        print(f"  Deleted {summary.counters.nodes_deleted} nodes and {summary.counters.relationships_deleted} relationships.")
-    driver.close()
+    # Add connection timeout config
+    driver = GraphDatabase.driver(
+        NEO4J_URI, 
+        auth=(NEO4J_USER, NEO4J_PASSWORD),
+        connection_timeout=60.0,
+        max_connection_lifetime=60,
+        max_connection_pool_size=1
+    )
+    
+    retries = 3
+    try:
+        for attempt in range(retries):
+            try:
+                driver.verify_connectivity()
+                with driver.session() as session:
+                    result = session.run("MATCH (n) DETACH DELETE n")
+                    summary = result.consume()
+                    print(f"  Deleted {summary.counters.nodes_deleted} nodes and {summary.counters.relationships_deleted} relationships.")
+                break
+            except Exception as e:
+                print(f"  Attempt {attempt+1}/{retries} failed: {e}")
+                if attempt < retries - 1:
+                    import time
+                    time.sleep(5)
+                else:
+                    raise e
+    finally:
+        driver.close()
     print("Neo4j reset complete.")
 
 if __name__ == "__main__":

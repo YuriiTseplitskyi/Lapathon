@@ -40,6 +40,14 @@ class Settings(BaseSettings):
     # Validation
     validate_immutable: bool = True
 
+    # MinIO
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minioadmin"
+    minio_secure: bool = False
+    minio_bucket_court: str = "court-documents"
+    minio_bucket_photos: str = "person-photos"
+
     def ensure_out_dirs(self) -> None:
         # Only create directories if using JSON backends
         if "json" in (self.log_backend, self.graph_sink, self.schema_backend):

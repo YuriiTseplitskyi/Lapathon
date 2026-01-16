@@ -36,6 +36,9 @@ def find_files(data_dir: Path) -> List[Path]:
     for ext in ["**/*.xml", "**/*.json"]:
         for p in data_dir.glob(ext):
             if p.is_file():
+                # Skip system/metadata files
+                if p.name in ["index.xml", "index.json"]:
+                    continue
                 # Simple filter: check if filename contains "answer" to match my hypothesis, or just try all?
                 # The prompt said "Input: Raw files from drive / S3 / FS."
                 # "Input: Raw files" implies we should try to ingest what we find.
@@ -43,20 +46,24 @@ def find_files(data_dir: Path) -> List[Path]:
                 files.append(p)
     return files
 
+_worker_pipeline = None
+
+def init_worker(settings_dict):
+    global _worker_pipeline
+    from ingestion_job.app.core.settings import Settings
+    from ingestion_job.app.services.pipeline import IngestionPipeline
+    
+    # Initialize once per process
+    s = Settings(**settings_dict)
+    _worker_pipeline = IngestionPipeline(s)
+
 def process_one_file(file_path_str: str, settings_dict: dict):
-    # Re-init settings and pipeline in worker process
-    # settings_dict comes from main process
+    # Reuse global pipeline
     try:
-        from ingestion_job.app.core.settings import Settings
-        from ingestion_job.app.services.pipeline import IngestionPipeline
+        if _worker_pipeline is None:
+             return {"status": "error", "error": "Worker pipeline not initialized"}
         
-        s = Settings(**settings_dict)
-        # Ensure fresh sinks
-        p = IngestionPipeline(s)
-        try:
-            return p.ingest_file(file_path_str)
-        finally:
-            p.close()
+        return _worker_pipeline.ingest_file(file_path_str)
     except Exception as e:
         import traceback
         return {"status": "error", "error": f"{type(e).__name__}: {e}", "traceback": traceback.format_exc()}
@@ -95,13 +102,15 @@ def run_batch(data_dir_str: str):
     
     # Prepare args
     # Limit parallelism to avoid blowing up DB connection limits
-    max_workers = 10 
+    # Limit parallelism
+    # Global reuse enabled: safe to increase workers
+    max_workers = 5
     
     import concurrent.futures
     
     logger.info(f"Starting parallel ingestion with {max_workers} workers (Run ID: {pipeline.run_id})...")
     
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers, initializer=init_worker, initargs=(settings_dict,)) as executor:
         # We need a helper function that can be picked. Local functions can't be pickled.
         # But we can import it if it's in the module.
         # Actually run_batch.py is a script. We should define `process_one_file` at top level.

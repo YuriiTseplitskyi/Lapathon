@@ -13,16 +13,18 @@ def sha256_bytes(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
 
 def detect_content_type(file_path: str, raw: bytes) -> str:
-    lp = file_path.lower()
-    if lp.endswith(".json"):
-        return "application/json"
-    if lp.endswith(".xml"):
-        return "application/xml"
     s = raw.lstrip()[:50]
     if s.startswith(b"{") or s.startswith(b"["):
         return "application/json"
     if s.startswith(b"<"):
         return "application/xml"
+        
+    lp = file_path.lower()
+    if lp.endswith(".json"):
+        return "application/json"
+    if lp.endswith(".xml"):
+        return "application/xml"
+    
     return "application/octet-stream"
 
 def read_raw_document(file_path: str) -> RawDocument:

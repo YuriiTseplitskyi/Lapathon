@@ -18,7 +18,13 @@ MONGO_URI = os.getenv("MONGO_URI")
 MONGO_DB = os.getenv("MONGO_DB")
 
 def get_db():
-    client = MongoClient(MONGO_URI)
+    client = MongoClient(
+        MONGO_URI,
+        tlsAllowInvalidCertificates=True,
+        connectTimeoutMS=60000,
+        socketTimeoutMS=60000,
+        serverSelectionTimeoutMS=60000
+    )
     return client[MONGO_DB]
 
 def now_utc():
@@ -75,21 +81,24 @@ def init_entities(db):
     
     entities = []
     
-    # 1. Person
+    # 1. Person - COMPREHENSIVE
     entities.append(make_entity_schema(
         "Person", 
-        ["person_id", "gender", "unzr", "birth_date", "citizenship", "registry_source", 
-         "last_name", "birth_place", "middle_name", "rnokpp", "full_name", "first_name"],
+        ["person_id", "gender", "unzr", "birth_date", "citizenship", "registry_source", "registry_place",
+         "last_name", "birth_place", "middle_name", "rnokpp", "full_name", "first_name", "first_name_en",
+         # Passport / Document fields merged
+         "passport_series", "passport_number", "passport_issue_date", "passport_issuer", "photo_url", "has_photo"],
         [
             {"properties": ["rnokpp"], "when": {"exists": ["rnokpp"]}},
             {"properties": ["full_name"], "when": {"exists": ["full_name"]}} 
         ]
     ))
     
-    # 2. Vehicle
+    # 2. Vehicle - COMPREHENSIVE
     entities.append(make_entity_schema(
         "Vehicle",
-        ["vehicle_id", "year", "color", "registration_number", "vin", "model", "make", "car_id"],
+        ["vehicle_id", "year", "color", "registration_number", "vin", "model", "make", "car_id",
+         "description", "vehicle_type", "property_type", "asset_type"],
         [{"properties": ["vin"], "when": {"exists": ["vin"]}}]
     ))
 
@@ -109,7 +118,8 @@ def init_entities(db):
     # 6. CourtDecision
     entities.append(make_entity_schema(
         "CourtDecision", 
-        ["court_id", "decision_id", "reg_num", "court_name", "case_number", "decision_date", "decision_type"]
+        ["court_id", "decision_id", "reg_num", "court_name", "case_number", "decision_date", "decision_type",
+         "content_url", "content_hash", "content_snippet"]
     ))
     
     # 7. IncomeRecord
@@ -135,11 +145,32 @@ def init_entities(db):
         ["property_id", "right_id", "rn_num", "registrar", "right_reg_date", "pr_state",
          "doc_type", "doc_type_extension", "right_type", "doc_date", "doc_publisher", "share"]
     ))
+
+    # 10b. Request (Traceability)
+    entities.append(make_entity_schema(
+        "Request",
+        ["request_id", "date", "source_system", "user_id"],
+        [{"properties": ["request_id"], "when": {"exists": ["request_id"]}}]
+    ))
     
-    # 11. Property
+    # 11. RealEstateProperty (Buildings, Apartments)
+    entities.append(make_entity_schema(
+        "RealEstateProperty",
+        ["property_id", "reg_num", "registration_date", "re_type", "state", "area", "area_unit", "description", "asset_type"],
+        [{"properties": ["reg_num"], "when": {"exists": ["reg_num"]}}]
+    ))
+
+    # 12. LandParcel (Land)
+    entities.append(make_entity_schema(
+        "LandParcel",
+        ["property_id", "cad_num", "area", "area_unit", "purpose", "asset_type"],
+        [{"properties": ["cad_num"], "when": {"exists": ["cad_num"]}}]
+    ))
+    
+    # 13. Property (Generic / Unclassified - Deprecated but kept for fallback)
     entities.append(make_entity_schema(
         "Property",
-        ["property_id", "reg_num", "registration_date", "re_type", "state", "cad_num", "area", "area_unit"],
+        ["property_id", "reg_num", "registration_date", "re_type", "state", "cad_num", "area", "area_unit", "asset_type"],
         [{"properties": ["reg_num"], "when": {"exists": ["reg_num"]}}]
     ))
     
@@ -244,12 +275,20 @@ def init_relationships(db):
     rels = []
     
     # RRP Relationships
-    # Right -> Property
-    rels.append(make_rel_schema("OwnershipRight_RIGHT_TO_Property", "RIGHT_TO", "OwnershipRight", "Property", [], from_ref="Right", to_ref="Prop"))
+    # RRP Relationships
+    # Right -> Property (RealEstateProperty or LandParcel or Property)
+    # Since we can have multiple targets for "Prop" ref in pipeline (based on label), we should ideally support multiple matching.
+    # But init_schemas relationship definition is strict on labels (Neo4j Type definition).
+    # We will define relationships for RealEstateProperty.
+    
+    # OwnershipRight -> RealEstateProperty
+    rels.append(make_rel_schema("OwnershipRight_RIGHT_TO_RealEstateProperty", "RIGHT_TO", "OwnershipRight", "RealEstateProperty", [], from_ref="Right", to_ref="Prop"))
+    
     # Person (Owner) -> Right
     rels.append(make_rel_schema("Person_HAS_RIGHT_OwnershipRight", "HAS_RIGHT", "Person", "OwnershipRight", ["role"], from_ref="Owner", to_ref="Right"))
-    # Property -> Address
-    rels.append(make_rel_schema("Property_LOCATED_AT_Address", "LOCATED_AT", "Property", "Address", [], from_ref="Prop", to_ref="Addr"))
+    
+    # RealEstateProperty -> Address
+    rels.append(make_rel_schema("RealEstateProperty_LOCATED_AT_Address", "LOCATED_AT", "RealEstateProperty", "Address", [], from_ref="Prop", to_ref="Addr"))
 
     # DRFO Relationships
     # TaxAgent -> Income
@@ -268,11 +307,17 @@ def init_relationships(db):
     # Let's add one. Labels: Organization, Person.
     rels.append(make_rel_schema("Organization_HAS_HEAD_Person", "HAS_HEAD", "Organization", "Person", [], from_ref="Org", to_ref="Head"))
 
-    # EIS Relationships
-    # Person -> Document
-    rels.append(make_rel_schema("Person_HAS_DOCUMENT_Document", "HAS_DOCUMENT", "Person", "Document", [], from_ref="EisPerson", to_ref="Passport"))
-    # Issuer -> Document?
-    rels.append(make_rel_schema("Organization_ISSUED_Document", "ISSUED", "Organization", "Document", [], from_ref="Issuer", to_ref="Passport"))
+    # EIS Relationships - Converted to Attributes
+    # Person -> Document (Removed, now attributes)
+    # Issuer -> Document (Removed)
+
+    # Request Relationships
+    rels.append(make_rel_schema("Request_SEARCHED_Person", "SEARCHED", "Request", "Person", [], from_ref="Req", to_ref="Subject"))
+    
+    # Request -> Result (Answer)
+    # Linking distinct roles in ERD answer
+    rels.append(make_rel_schema("Request_RETURNED_Grantor", "RETURNED", "Request", "Person", [], from_ref="Req", to_ref="Grantor"))
+    rels.append(make_rel_schema("Request_RETURNED_Representative", "RETURNED", "Request", "Person", [], from_ref="Req", to_ref="Representative"))
 
     # ERD Relationships (Power of Attorney / Vehicle)
     # Grantor -> Vehicle
@@ -281,6 +326,10 @@ def init_relationships(db):
     # Court Relationships
     rels.append(make_rel_schema("CourtCase_IN_COURT_Court", "IN_COURT", "CourtCase", "Court", [], from_ref="CaseNode", to_ref="CourtNode"))
     rels.append(make_rel_schema("CourtDecision_FOR_CASE_CourtCase", "FOR_CASE", "CourtDecision", "CourtCase", [], from_ref="DecisionNode", to_ref="CaseNode"))
+    rels.append(make_rel_schema("CourtDecision_INVOLVES_Person", "INVOLVES", "CourtDecision", "Person", ["role"], from_ref="DecisionNode", to_ref="CourtPerson"))
+
+    # Person -> Document (EIS)
+    rels.append(make_rel_schema("Person_HAS_DOCUMENT_Document", "HAS_DOCUMENT", "Person", "Document", [], from_ref="EisPerson", to_ref="EisDoc"))
     
     # Legacy / Other (can add Period if needed later)
     # rels.append(make_rel_schema("IncomeRecord_FOR_PERIOD_Period", "FOR_PERIOD", "IncomeRecord", "Period"))
@@ -298,11 +347,14 @@ def init_registers(db):
     
     variants = []
     
-    def m(mid, scope, src_path, target_ent, target_prop, ent_ref):
+    def m(mid, scope, src_path, target_ent, target_prop, ent_ref, use_root_context=False):
+        source = {"json_path": src_path}
+        if use_root_context:
+            source["use_root_context"] = True
         return {
             "mapping_id": mid,
             "scope": {"foreach": scope},
-            "source": {"json_path": src_path},
+            "source": source,
             "targets": [{"entity": target_ent, "property": target_prop, "entity_ref": ent_ref}]
         }
 
@@ -336,20 +388,28 @@ def init_registers(db: Database):
     coll.drop()
     
     # helper for mapping
-    # m(mapping_id, scope_str, source_str, label, prop, ent_ref)
-    def m(mid, scope_path, src_path, lbl, prop, ent_ref):
-        return {
+    # m(mapping_id, scope_str, source_str, label, prop, ent_ref, transform)
+    def m(mid, scope_path, src_path, lbl, prop, ent_ref, transform=None, use_root_context=False, filter_rules=None):
+        source = {"json_path": src_path}
+        if use_root_context:
+            source["use_root_context"] = True
+        
+        mapping = {
             "mapping_id": mid,
             "scope": {"foreach": scope_path},
-            "source": {"json_path": src_path},
+            "source": source,
             "targets": [
                 {
                     "entity": lbl,
                     "property": prop,
-                    "entity_ref": ent_ref
+                    "entity_ref": ent_ref,
+                    "transform": transform
                 }
             ]
         }
+        if filter_rules:
+            mapping["filter"] = filter_rules
+        return mapping
 
     # ==========================================
     # 1. RRP (State Register of Rights to Real Estate)
@@ -358,26 +418,52 @@ def init_registers(db: Database):
     rrp_mappings = []
     base_scope = "$.data.array.resultData.result[*].realty[*]"
     
-    # Property Node
-    rrp_mappings.append(m("prop_main", base_scope, "$.regNum", "Property", "reg_num", "Prop"))
-    rrp_mappings.append(m("prop_main", base_scope, "$.reType", "Property", "re_type", "Prop"))
-    rrp_mappings.append(m("prop_main", base_scope, "$.regDate", "Property", "registration_date", "Prop"))
+    # Property Node -> RealEstateProperty
+    rrp_mappings.append(m("prop_main", base_scope, "$.regNum", "RealEstateProperty", "reg_num", "Prop"))
+    rrp_mappings.append(m("prop_main", base_scope, "$.reType", "RealEstateProperty", "re_type", "Prop"))
+    rrp_mappings.append(m("prop_main", base_scope, "$.regDate", "RealEstateProperty", "registration_date", "Prop"))
+    
+    # Static asset_type
+    rrp_mappings.append(m("prop_static", base_scope, "$.regNum", "RealEstateProperty", "asset_type", "Prop", 
+                          transform={"type": "constant", "value": "real_estate"}))
     
     # Area (nested list usually 1 item, flatten via path)
     # Path: groundArea[0].area etc.
-    rrp_mappings.append(m("prop_area", base_scope, "$.groundArea[0].area", "Property", "area", "Prop"))
-    rrp_mappings.append(m("prop_area", base_scope, "$.groundArea[0].areaUM", "Property", "area_unit", "Prop"))
-    rrp_mappings.append(m("prop_area", base_scope, "$.groundArea[0].cadNum", "Property", "cad_num", "Prop"))
+    rrp_mappings.append(m("prop_area", base_scope, "$.groundArea[0].area", "RealEstateProperty", "area", "Prop"))
+    rrp_mappings.append(m("prop_area", base_scope, "$.groundArea[0].areaUM", "RealEstateProperty", "area_unit", "Prop"))
+    # Note: RRP sometimes has cadNum inside groundArea, but if it has regNum it's primarily RealEstate.
+    # We could map cadNum as a property of RealEstateProperty too.
+    rrp_mappings.append(m("prop_area", base_scope, "$.groundArea[0].cadNum", "RealEstateProperty", "cad_num", "Prop"))
 
     # Address Node
+    # Splitting Full Address
+    # Example: "Вінницька обл., Вінницький р., с. Агрономічне, вул. Лісова, земельна ділянка 7-Б"
+    # Mapping full string to full_address
     rrp_mappings.append(m("prop_addr", base_scope, "$.realtyAddress[0].addressDetail", "Address", "full_address", "Addr"))
+    
+    # Address Source
+    rrp_mappings.append(m("prop_addr_src", base_scope, "$.realtyAddress[0].addressDetail", "Address", "address_source", "Addr",
+                          transform={"type": "constant", "value": "rrp"}))
+    
+    # Split region (index 0)
+    rrp_mappings.append(m("prop_addr_region", base_scope, "$.realtyAddress[0].addressDetail", "Address", "region", "Addr", 
+                          transform={"type": "split", "delimiter": ",", "index": 0}))
+    # Split district (index 1)
+    rrp_mappings.append(m("prop_addr_dist", base_scope, "$.realtyAddress[0].addressDetail", "Address", "district", "Addr", 
+                          transform={"type": "split", "delimiter": ",", "index": 1}))
+    # Split city (index 2)
+    rrp_mappings.append(m("prop_addr_city", base_scope, "$.realtyAddress[0].addressDetail", "Address", "city", "Addr", 
+                          transform={"type": "split", "delimiter": ",", "index": 2}))
+
     rrp_mappings.append(m("prop_addr", base_scope, "$.realtyAddress[0].koatuu", "Address", "koatuu", "Addr"))
     
     # 1.2 Ownership & Subjects (Scope: properties -> subjects)
     right_scope = "$.data.array.resultData.result[*].realty[*].properties[*]"
     rrp_mappings.append(m("right_node", right_scope, "$.rnNum", "OwnershipRight", "rn_num", "Right"))
-    rrp_mappings.append(m("right_node", right_scope, "$.prKind", "OwnershipRight", "type", "Right"))
+    rrp_mappings.append(m("right_node", right_scope, "$.prKind", "OwnershipRight", "right_type", "Right"))
     rrp_mappings.append(m("right_node", right_scope, "$.partSize", "OwnershipRight", "share", "Right"))
+    rrp_mappings.append(m("right_node", right_scope, "$.regDate", "OwnershipRight", "right_reg_date", "Right"))
+    rrp_mappings.append(m("right_node", right_scope, "$.prState", "OwnershipRight", "pr_state", "Right"))
     
     # Subjects (Owners) - flattened first subject for simplicity
     rrp_mappings.append(m("right_owner_0", right_scope, "$.subjects[0].sbjName", "Person", "full_name", "Owner"))
@@ -392,21 +478,37 @@ def init_registers(db: Database):
         },
         "mappings": rrp_mappings
     })
+    
+    # 1.3 Empty / No Data Response (GetInheritedPropertiesByNameOrIDN)
+    rrp_variants.append({
+        "variant_id": "rrp_empty_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.Envelope.Body.GetInheritedPropertiesByNameOrIDNResponse"}
+            ]
+        },
+        "mappings": [] # No data to extract, valid empty response
+    })
 
     # ==========================================
-    # 2. DRFO (Tax Income)
+    # 2. DRFO (Tax Income) - COMPREHENSIVE
     # ==========================================
     drfo_variants = []
     drfo_mappings = []
     inc_scope = "$.data.Envelope.Body.InfoIncomeSourcesDRFO2AnswerResponse.SourcesOfIncome[*]"
     
-    # Income Node
-    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.IncomeAccrued", "IncomeRecord", "amount", "IncRec"))
+    # Income Node - ALL FIELDS from Опис_полів.xlsx
+    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.IncomeAccrued", "IncomeRecord", "income_accrued", "IncRec"))
+    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.IncomePaid", "IncomeRecord", "income_paid", "IncRec"))
+    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.TaxCharged", "IncomeRecord", "tax_charged", "IncRec"))
+    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.TaxTransferred", "IncomeRecord", "tax_transferred", "IncRec"))
     drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.period_year", "IncomeRecord", "year", "IncRec"))
     drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.period_quarter_month", "IncomeRecord", "period", "IncRec"))
+    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.SignOfIncomePrivilege", "IncomeRecord", "income_type_code", "IncRec"))
+    drfo_mappings.append(m("inc_rec", inc_scope, "$.DateOfEmployment", "IncomeRecord", "employment_date", "IncRec"))
     
     # TaxAgent Node
-    drfo_mappings.append(m("tax_agent", inc_scope, "$.TaxAgent", "Organization", "tax_id", "TaxAgent"))
+    drfo_mappings.append(m("tax_agent", inc_scope, "$.TaxAgent", "Organization", "edrpou", "TaxAgent"))
     drfo_mappings.append(m("tax_agent", inc_scope, "$.NameTaxAgent", "Organization", "name", "TaxAgent"))
     
     # Person (Subject) - Root level
@@ -458,20 +560,33 @@ def init_registers(db: Database):
     eis_mappings = []
     eis_scope = "$.data.root.result"
     
-    # Person
+    # Person - COMPREHENSIVE
     eis_mappings.append(m("eis_person", eis_scope, "$.unzr", "Person", "unzr", "EisPerson"))
     eis_mappings.append(m("eis_person", eis_scope, "$.last_name", "Person", "last_name", "EisPerson"))
+    eis_mappings.append(m("eis_person", eis_scope, "$.first_name", "Person", "first_name", "EisPerson"))
+    eis_mappings.append(m("eis_person", eis_scope, "$.middle_name", "Person", "middle_name", "EisPerson"))
     eis_mappings.append(m("eis_person", eis_scope, "$.name_transliteration.first_name_latin", "Person", "first_name_en", "EisPerson"))
-    eis_mappings.append(m("eis_person", eis_scope, "$.date_birth", "Person", "dob", "EisPerson"))
+    eis_mappings.append(m("eis_person", eis_scope, "$.date_birth", "Person", "birth_date", "EisPerson"))
     eis_mappings.append(m("eis_person", eis_scope, "$.citizenship", "Person", "citizenship", "EisPerson"))
+    eis_mappings.append(m("eis_person", eis_scope, "$.gender", "Person", "gender", "EisPerson"))
+    eis_mappings.append(m("eis_person", eis_scope, "$.registr_place.address", "Person", "registry_place", "EisPerson"))
     
     # Document (Passport) - nested list
+    # Mapped to separate Document entity
     doc_scope = "$.data.root.result.documents[*]"
-    eis_mappings.append(m("eis_doc", doc_scope, "$.number", "Document", "doc_number", "Passport"))
-    eis_mappings.append(m("eis_doc", doc_scope, "$.series", "Document", "doc_series", "Passport"))
-    eis_mappings.append(m("eis_doc", doc_scope, "$.doc_type", "Document", "type", "Passport"))
-    eis_mappings.append(m("eis_doc", doc_scope, "$.date_issue", "Document", "date_issue", "Passport"))
-    eis_mappings.append(m("eis_doc", doc_scope, "$.dep_out", "Organization", "name", "Issuer"))
+    eis_mappings.append(m("eis_doc", doc_scope, "$.number", "Document", "doc_number", "EisDoc"))
+    eis_mappings.append(m("eis_doc", doc_scope, "$.series", "Document", "doc_series", "EisDoc"))
+    eis_mappings.append(m("eis_doc", doc_scope, "$.date_issue", "Document", "doc_issue_date", "EisDoc"))
+    eis_mappings.append(m("eis_doc", doc_scope, "$.dep_out", "Document", "doc_issuer", "EisDoc"))
+    
+    # Static doc type
+    eis_mappings.append(m("eis_doc_type", doc_scope, "$.number", "Document", "doc_type", "EisDoc",
+                          transform={"type": "constant", "value": "passport"}))
+    
+    # Photo - Handling Base64
+    # We map 'photo' from JSON to a temporary property 'photo_base64' (or just 'photo')
+    # The pipeline will intercept 'photo_base64' field, upload to MinIO, and set 'photo_url'
+    eis_mappings.append(m("eis_photo", eis_scope, "$.photo", "Person", "photo_base64", "EisPerson"))
 
     eis_variants.append({
         "variant_id": "eis_person_v1",
@@ -489,7 +604,9 @@ def init_registers(db: Database):
     dzk_variants = []
     dzk_mappings = []
     dzk_scope = "$.data.result.cadNum[*]"
-    dzk_mappings.append(m("dzk_prop", dzk_scope, "$", "Property", "cad_num", "LandProp"))
+    dzk_mappings.append(m("dzk_prop", dzk_scope, "$", "LandParcel", "cad_num", "LandProp"))
+    dzk_mappings.append(m("dzk_asset", dzk_scope, "$", "LandParcel", "asset_type", "LandProp",
+                          transform={"type": "constant", "value": "land"}))
 
     dzk_variants.append({
         "variant_id": "dzk_land_simple_v1",
@@ -530,21 +647,100 @@ def init_registers(db: Database):
     erd_variants = []
     erd_mappings = []
     
-    # Grantor/Representative
+    # Grantor Response Scopes
     grantor_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Grantor"
+    rep_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Representative"
+    veh_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Properties.Property[*]"
+    
+    # Persons Response Scopes (New for Linkage)
+    persons_scope_grantor = "$.data.Envelope.Body.getProxyPersonsNameOrIDNResponse.getProxyPersonsNameOrIDNResult.Result_data.ResultDataType[*].Grantor"
+    persons_scope_rep = "$.data.Envelope.Body.getProxyPersonsNameOrIDNResponse.getProxyPersonsNameOrIDNResult.Result_data.ResultDataType[*].Representative" 
+    persons_scope_veh = "$.data.Envelope.Body.getProxyPersonsNameOrIDNResponse.getProxyPersonsNameOrIDNResult.Result_data.ResultDataType[*].Properties.Property[*]"
+
+    # --- Mappings for Grantor Response ---
     erd_mappings.append(m("erd_grantor", grantor_scope, "$.Name", "Person", "full_name", "Grantor"))
     erd_mappings.append(m("erd_grantor", grantor_scope, "$.Code", "Person", "rnokpp", "Grantor"))
     
-    rep_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Representative"
     erd_mappings.append(m("erd_rep", rep_scope, "$.Name", "Person", "full_name", "Representative"))
     erd_mappings.append(m("erd_rep", rep_scope, "$.Code", "Person", "rnokpp", "Representative"))
     
-    # Vehicle Property
-    veh_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Properties.Property[?(@.Property_type=='1')]"
-    erd_mappings.append(m("erd_vehicle", veh_scope, "$.Government_registration_number", "Vehicle", "registration_number", "ProxyVehicle"))
-    erd_mappings.append(m("erd_vehicle", veh_scope, "$.Serial_number", "Vehicle", "vin", "ProxyVehicle"))
-    erd_mappings.append(m("erd_vehicle", veh_scope, "$.Description", "Vehicle", "description", "ProxyVehicle"))
+    # Filters for ERD (Vehicle vs Real Estate mix)
+    # Exclude Real Estate keywords from Vehicle mappings
+    veh_filter = {
+        "none": [{
+            "type": "json_regex",
+            "path": "$.Description",
+            "pattern": "(?i)(будинок|квартира|житло|земельна|кімната|приміщення|споруда|майновий)"
+        }]
+    }
+    # Include ONLY Real Estate keywords for RealEstate mappings
+    re_filter = {
+        "all": [{
+            "type": "json_regex",
+            "path": "$.Description",
+            "pattern": "(?i)(будинок|квартира|житло|земельна|кімната|приміщення|споруда|майновий)"
+        }]
+    }
+
+    # Vehicles (With Filter)
+    erd_mappings.append(m("erd_vehicle", veh_scope, "$.Government_registration_number", "Vehicle", "registration_number", "ProxyVehicle", filter_rules=veh_filter))
+    erd_mappings.append(m("erd_vehicle", veh_scope, "$.Serial_number", "Vehicle", "vin", "ProxyVehicle", filter_rules=veh_filter))
+    erd_mappings.append(m("erd_vehicle", veh_scope, "$.Description", "Vehicle", "description", "ProxyVehicle", filter_rules=veh_filter))
+    erd_mappings.append(m("erd_vehicle_model", veh_scope, "$.Description", "Vehicle", "model", "ProxyVehicle",
+                          transform={"type": "regex", "pattern": r"моделі ([^,]+)", "group": 1}, filter_rules=veh_filter))
+    erd_mappings.append(m("erd_vehicle_year", veh_scope, "$.Description", "Vehicle", "year", "ProxyVehicle",
+                          transform={"type": "regex", "pattern": r"рік випуску (\d{4})", "group": 1}, filter_rules=veh_filter))
+    erd_mappings.append(m("erd_vehicle", veh_scope, "$.Vht_id", "Vehicle", "vehicle_type", "ProxyVehicle", filter_rules=veh_filter))
+    erd_mappings.append(m("erd_vehicle", veh_scope, "$.Property_type", "Vehicle", "property_type", "ProxyVehicle", filter_rules=veh_filter))
+    erd_mappings.append(m("erd_vehicle_asset", veh_scope, "$.Vht_id", "Vehicle", "asset_type", "ProxyVehicle",
+                          transform={"type": "constant", "value": "vehicle"}, filter_rules=veh_filter))
+
+    # Real Estate (New mappings for same scope)
+    erd_mappings.append(m("erd_re", veh_scope, "$.Description", "RealEstateProperty", "description", "ProxyProperty", filter_rules=re_filter))
+    erd_mappings.append(m("erd_re", veh_scope, "$.Vht_id", "RealEstateProperty", "re_type", "ProxyProperty", filter_rules=re_filter))
+    # Map Vht_id (e.g. "Житловий будинок") to asset_type as "real_estate"
+    erd_mappings.append(m("erd_re_asset", veh_scope, "$.Vht_id", "RealEstateProperty", "asset_type", "ProxyProperty", 
+                          transform={"type": "constant", "value": "real_estate"}, filter_rules=re_filter))
+    # Map registration number if applicable to Reg Num? 
+    # Usually "Government_registration_number" is license plate. For house? Maybe registry number.
+    erd_mappings.append(m("erd_re", veh_scope, "$.Government_registration_number", "RealEstateProperty", "reg_num", "ProxyProperty", filter_rules=re_filter))
+
+    # Request ID - Map at ResultDataType level so it shares scope with Grantor/Representative
+    # Use root_context flag to access parent-level Request_ID while iterating nested array
+    result_data_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*]"
+    erd_mappings.append(m("erd_req_result", result_data_scope, "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Request_ID", "Request", "request_id", "Req", use_root_context=True))
+
+    # --- Mappings for Persons Response ---
+    erd_persons_mappings = []
+    erd_persons_mappings.append(m("erd_p_grantor", persons_scope_grantor, "$.Name", "Person", "full_name", "Grantor"))
+    erd_persons_mappings.append(m("erd_p_grantor", persons_scope_grantor, "$.Code", "Person", "rnokpp", "Grantor"))
     
+    erd_persons_mappings.append(m("erd_p_rep", persons_scope_rep, "$.Name", "Person", "full_name", "Representative"))
+    erd_persons_mappings.append(m("erd_p_rep", persons_scope_rep, "$.Code", "Person", "rnokpp", "Representative"))
+    
+    erd_persons_mappings.append(m("erd_p_vehicle", persons_scope_veh, "$.Government_registration_number", "Vehicle", "registration_number", "ProxyVehicle", filter_rules=veh_filter))
+    erd_persons_mappings.append(m("erd_p_vehicle", persons_scope_veh, "$.Serial_number", "Vehicle", "vin", "ProxyVehicle", filter_rules=veh_filter))
+    erd_persons_mappings.append(m("erd_p_vehicle", persons_scope_veh, "$.Description", "Vehicle", "description", "ProxyVehicle", filter_rules=veh_filter))
+    erd_persons_mappings.append(m("erd_p_vehicle_model", persons_scope_veh, "$.Description", "Vehicle", "model", "ProxyVehicle",
+                          transform={"type": "regex", "pattern": r"моделі ([^,]+)", "group": 1}, filter_rules=veh_filter))
+    erd_persons_mappings.append(m("erd_p_vehicle_year", persons_scope_veh, "$.Description", "Vehicle", "year", "ProxyVehicle",
+                          transform={"type": "regex", "pattern": r"рік випуску (\d{4})", "group": 1}, filter_rules=veh_filter))
+    erd_persons_mappings.append(m("erd_p_vehicle", persons_scope_veh, "$.Vht_id", "Vehicle", "vehicle_type", "ProxyVehicle", filter_rules=veh_filter))
+    erd_persons_mappings.append(m("erd_p_vehicle", persons_scope_veh, "$.Property_type", "Vehicle", "property_type", "ProxyVehicle", filter_rules=veh_filter))
+    erd_persons_mappings.append(m("erd_p_vehicle_asset", persons_scope_veh, "$.Vht_id", "Vehicle", "asset_type", "ProxyVehicle",
+                          transform={"type": "constant", "value": "vehicle"}, filter_rules=veh_filter))
+
+    # Real Estate (Persons Response)
+    erd_persons_mappings.append(m("erd_p_re", persons_scope_veh, "$.Description", "RealEstateProperty", "description", "ProxyProperty", filter_rules=re_filter))
+    erd_persons_mappings.append(m("erd_p_re", persons_scope_veh, "$.Vht_id", "RealEstateProperty", "re_type", "ProxyProperty", filter_rules=re_filter))
+    erd_persons_mappings.append(m("erd_p_re_asset", persons_scope_veh, "$.Vht_id", "RealEstateProperty", "asset_type", "ProxyProperty", 
+                          transform={"type": "constant", "value": "real_estate"}, filter_rules=re_filter))
+    erd_persons_mappings.append(m("erd_p_re", persons_scope_veh, "$.Government_registration_number", "RealEstateProperty", "reg_num", "ProxyProperty", filter_rules=re_filter))
+
+    # Request ID at ResultDataType level for Persons response with root context access
+    persons_result_data_scope = "$.data.Envelope.Body.getProxyPersonsNameOrIDNResponse.getProxyPersonsNameOrIDNResult.Result_data.ResultDataType[*]"
+    erd_persons_mappings.append(m("erd_req_p_result", persons_result_data_scope, "$.data.Envelope.Body.getProxyPersonsNameOrIDNResponse.getProxyPersonsNameOrIDNResult.Request_ID", "Request", "request_id", "Req", use_root_context=True))
+
     erd_variants.append({
         "variant_id": "erd_poa_v1",
         "match_predicate": {
@@ -553,6 +749,16 @@ def init_registers(db: Database):
             ]
         },
         "mappings": erd_mappings
+    })
+    
+    erd_variants.append({
+        "variant_id": "erd_persons_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.Envelope.Body.getProxyPersonsNameOrIDNResponse"}
+            ]
+        },
+        "mappings": erd_persons_mappings
     })
 
     # ==========================================
@@ -577,6 +783,10 @@ def init_registers(db: Database):
     court_mappings.append(m("decision_node", court_scope, "$.judgeFio", "CourtDecision", "judge_name", "DecisionNode"))
     court_mappings.append(m("decision_node", court_scope, "$.caseNum", "CourtDecision", "case_number", "DecisionNode"))
     
+    # CourtDecision - Content
+    # Map raw base64 content to 'content_base64' property. Pipeline will process it.
+    court_mappings.append(m("decision_node", court_scope, "$.docText", "CourtDecision", "content_base64", "DecisionNode"))
+    
     # Person (involved)
     court_mappings.append(m("involved_person", court_scope, "$.PIB", "Person", "full_name", "CourtPerson"))
     court_mappings.append(m("involved_person", court_scope, "$.rnokpp", "Person", "rnokpp", "CourtPerson"))
@@ -592,6 +802,269 @@ def init_registers(db: Database):
     })
 
     # ==========================================
+    # 9. MVS/NAIS Vehicles (answer.json structure)
+    # ==========================================
+    mvs_variants = []
+    mvs_mappings = []
+    mvs_scope = "$.data.root.CARS[*]"
+    
+    # Vehicle
+    mvs_mappings.append(m("mvs_veh", mvs_scope, "$.VIN", "Vehicle", "vin", "Car"))
+    mvs_mappings.append(m("mvs_veh", mvs_scope, "$.N_REG", "Vehicle", "registration_number", "Car"))
+    mvs_mappings.append(m("mvs_veh", mvs_scope, "$.BRAND_NAME", "Vehicle", "make", "Car"))
+    mvs_mappings.append(m("mvs_veh", mvs_scope, "$.MODEL_NAME", "Vehicle", "model", "Car"))
+    mvs_mappings.append(m("mvs_veh", mvs_scope, "$.MAKE_YEAR", "Vehicle", "year", "Car", transform={"type": "to_int"})) 
+    mvs_mappings.append(m("mvs_veh", mvs_scope, "$.COLOR_NAME", "Vehicle", "color", "Car"))
+    
+    # Owner
+    mvs_mappings.append(m("mvs_owner", mvs_scope, "$.OWNER.CODE", "Person", "rnokpp", "Owner"))
+    mvs_mappings.append(m("mvs_owner", mvs_scope, "$.OWNER.LNAME", "Person", "last_name", "Owner"))
+    mvs_mappings.append(m("mvs_owner", mvs_scope, "$.OWNER.FNAME", "Person", "first_name", "Owner"))
+    
+    # Address
+    # "ADDRESS_NAME": "м. ВІННИЦЯ, Вінницький р-н"
+    addr_path = "$.OWNER.ADDRESS.ADDRESS_NAME"
+    mvs_mappings.append(m("mvs_addr", mvs_scope, addr_path, "Address", "full_address", "OwnerAddr"))
+    
+    # Transform: Split City (Index 0) -> "м. ВІННИЦЯ"
+    mvs_mappings.append(m("mvs_addr_city", mvs_scope, addr_path, "Address", "city", "OwnerAddr",
+                          transform={"type": "split", "delimiter": ",", "index": 0}))
+    
+    # Transform: Split District (Index 1) -> " Вінницький р-н"
+    mvs_mappings.append(m("mvs_addr_dist", mvs_scope, addr_path, "Address", "district", "OwnerAddr",
+                          transform={"type": "split", "delimiter": ",", "index": 1}))
+
+    mvs_variants.append({
+        "variant_id": "mvs_cars_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.root.CARS"}
+            ]
+        },
+        "mappings": mvs_mappings
+    })
+
+    # ==========================================
+    # 10. IDP (Internally Displaced Persons)
+    # ==========================================
+    idp_variants = []
+    
+    # Empty / No Data Response (IDPByItn)
+    idp_variants.append({
+        "variant_id": "idp_empty_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.Envelope.Body.Response.ResponseCode"}
+            ]
+        },
+        "mappings": [] # No data
+    })
+
+    # ==========================================
+    # 11. Requests (Traceability)
+    # ==========================================
+    req_variants = []
+    
+    # Request XML (SEVDEIR/getProxyPersonsNameOrIDN)
+    req_xml_mappings = []
+    req_xml_scope = "$"
+    
+    # Request Node
+    req_xml_mappings.append(m("req_node", req_xml_scope, "$.data.Envelope.Body.getProxyPersonsNameOrIDN.Request_ID", "Request", "request_id", "Req"))
+    # Subject Person (The one being searched for)
+    req_xml_mappings.append(m("req_subject", req_xml_scope, "$.data.Envelope.Body.getProxyPersonsNameOrIDN.Search_nam", "Person", "full_name", "Subject", transform={"type": "trim"}))
+    req_xml_mappings.append(m("req_subject", req_xml_scope, "$.data.Envelope.Body.getProxyPersonsNameOrIDN.Search_code", "Person", "rnokpp", "Subject"))
+    
+    req_variants.append({
+        "variant_id": "request_xml_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.Envelope.Body.getProxyPersonsNameOrIDN.Request_ID"}
+            ]
+        },
+        "mappings": req_xml_mappings
+    })
+
+    # Request JSON
+    req_json_mappings = []
+    req_json_scope = "$"
+    # Request Node
+    req_json_mappings.append(m("req_node_json", req_json_scope, "$.data.REQUESTID", "Request", "request_id", "Req"))
+    # Subject Person
+    req_json_mappings.append(m("req_subject_json", req_json_scope, "$.data.CRITERIA.PNAME", "Person", "middle_name", "Subject"))
+    req_json_mappings.append(m("req_subject_json", req_json_scope, "$.data.CRITERIA.FNAME", "Person", "first_name", "Subject"))
+    req_json_mappings.append(m("req_subject_json", req_json_scope, "$.data.CRITERIA.LNAME", "Person", "last_name", "Subject"))
+    req_json_mappings.append(m("req_subject_json", req_json_scope, "$.data.CRITERIA.IPN", "Person", "rnokpp", "Subject"))
+    
+    req_variants.append({
+        "variant_id": "request_json_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.REQUESTID"}
+            ]
+        },
+        "mappings": req_json_mappings
+    })
+
+    # Request XML (DRACS)
+    req_dracs_mappings = []
+    # Use Body as scope, but access fields directly
+    dracs_scope = "$"
+    # Request Node (ID in Header)
+    req_dracs_mappings.append(m("req_dracs", dracs_scope, "$.data.Envelope.Header.id", "Request", "request_id", "Req"))
+    
+    # Subject Person (Husband)
+    dracs_body = "$.data.Envelope.Body.ArMarriageDivorceServiceRequest"
+    req_dracs_mappings.append(m("req_dracs_subj", dracs_scope, f"{dracs_body}.HusbandSurname", "Person", "last_name", "Subject"))
+    req_dracs_mappings.append(m("req_dracs_subj", dracs_scope, f"{dracs_body}.HusbandName", "Person", "first_name", "Subject"))
+    req_dracs_mappings.append(m("req_dracs_subj", dracs_scope, f"{dracs_body}.HusbandPatronymic", "Person", "middle_name", "Subject"))
+    req_dracs_mappings.append(m("req_dracs_subj", dracs_scope, f"{dracs_body}.HusbandBirthDate", "Person", "birth_date", "Subject"))
+    
+    req_variants.append({
+        "variant_id": "request_dracs_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_regex", "path": "$.data.Envelope.Header.service.serviceCode", "pattern": "Get.*ArBy.*"}
+            ]
+        },
+        "mappings": req_dracs_mappings
+    })
+
+    # Request XML (DRFO)
+    # ... (Keep existing DRFO mappings)
+
+    # Request Arkan (Border)
+    req_arkan_mappings = []
+    req_arkan_mappings.append(m("req_arkan", "$.data", "$.fioukr", "Person", "full_name", "Subject", transform={"type": "trim"}))
+    
+    req_variants.append({
+        "variant_id": "request_arkan_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_equals", "path": "$.meta.registry_code", "value": "REQUEST_ARKAN"}
+            ]
+        },
+        "mappings": req_arkan_mappings
+    })
+
+    # Request XML (ERD Generic - getProxy*)
+    req_erd_mappings = []
+    # Wildcard body path using [*] or specialized logic?
+    # Helper to map strictly? Let's use specific variants for safety or regex path mapping?
+    # Simple regex path support in Adapter isn't there for keys, but jsonpath-ng supports it.
+    # Let's add variants for known types: Grantor, Representative.
+    
+    # Grantor
+    erd_grantor_scope = "$"
+    req_erd_mappings.append(m("req_erd_g", erd_grantor_scope, "$.data.Envelope.Body.getProxyGrantorNameOrIDN.Request_ID", "Request", "request_id", "Req"))
+    req_erd_mappings.append(m("req_erd_g", erd_grantor_scope, "$.data.Envelope.Body.getProxyGrantorNameOrIDN.Search_nam", "Person", "full_name", "Subject", transform={"type": "trim"}))
+    req_erd_mappings.append(m("req_erd_g", erd_grantor_scope, "$.data.Envelope.Body.getProxyGrantorNameOrIDN.Search_code", "Person", "rnokpp", "Subject"))
+    
+    req_variants.append({
+        "variant_id": "request_erd_grantor_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.Envelope.Body.getProxyGrantorNameOrIDN"}
+            ]
+        },
+        "mappings": req_erd_mappings
+    })
+
+    # Request JSON (RRP)
+    req_rrp_mappings = []
+    rrp_scope = "$"
+    req_rrp_mappings.append(m("req_rrp", rrp_scope, "$.data.entity", "Request", "service_code", "Req")) # No ID, map entity/service
+    req_rrp_mappings.append(m("req_rrp", rrp_scope, "$.data.searchParams.subjectSearchInfo.sbjName", "Person", "full_name", "Subject"))
+    req_rrp_mappings.append(m("req_rrp", rrp_scope, "$.data.searchParams.subjectSearchInfo.sbjCode", "Person", "rnokpp", "Subject"))
+
+    req_variants.append({
+        "variant_id": "request_rrp_json_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_equals", "path": "$.data.entity", "value": "rrpExch_external"}
+            ]
+        },
+        "mappings": req_rrp_mappings
+    })
+
+    # Request XML (SR - Successions/Inheritance Registry)
+    req_sr_mappings = []
+    sr_scope = "$"
+    req_sr_mappings.append(m("req_sr", sr_scope, "$.data.Envelope.Body.GetInheritedPropertiesByNameOrIDN.Request_ID", "Request", "request_id", "Req"))
+    req_sr_mappings.append(m("req_sr", sr_scope, "$.data.Envelope.Body.GetInheritedPropertiesByNameOrIDN.Code", "Person", "rnokpp", "Subject"))
+
+    req_variants.append({
+        "variant_id": "request_sr_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.Envelope.Body.GetInheritedPropertiesByNameOrIDN"}
+            ]
+        },
+        "mappings": req_sr_mappings
+    })
+
+    # Request XML (DRFO)
+    req_drfo_mappings = []
+    drfo_body = "$.data.Envelope.Body.InfoIncomeSourcesDRFO2QueryRequest"
+    # Use Header ID for consistency
+    req_drfo_mappings.append(m("req_drfo", "$", "$.data.Envelope.Header.id", "Request", "request_id", "Req"))
+    
+    # Subject Person
+    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.RNOKPP", "Person", "rnokpp", "Subject"))
+    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.last_name", "Person", "last_name", "Subject"))
+    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.first_name", "Person", "first_name", "Subject"))
+    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.middle_name", "Person", "middle_name", "Subject"))
+    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.date_birth", "Person", "birth_date", "Subject"))
+
+    req_variants.append({
+        "variant_id": "request_drfo_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_equals", "path": "$.data.Envelope.Header.service.serviceCode", "value": "InfoIncomeSourcesDRFO2Query"}
+            ]
+        },
+        "mappings": req_drfo_mappings
+    })
+
+    # Request QueryString (Parsed by Adapter)
+    req_qs_mappings = []
+    qs_scope = "$.data"
+    # No Request ID usually in params? Map content as ID if needed or skip Request Node if ID missing?
+    # Ideally link Person.
+    # User file snippet: date_search=... rnokpp=...
+    # Let's map Person.
+    req_qs_mappings.append(m("req_qs_subj", qs_scope, "$.last_name", "Person", "last_name", "Subject"))
+    req_qs_mappings.append(m("req_qs_subj", qs_scope, "$.first_name", "Person", "first_name", "Subject"))
+    req_qs_mappings.append(m("req_qs_subj", qs_scope, "$.middle_name", "Person", "middle_name", "Subject"))
+    req_qs_mappings.append(m("req_qs_subj", qs_scope, "$.rnokpp", "Person", "rnokpp", "Subject"))
+    req_qs_mappings.append(m("req_qs_subj", qs_scope, "$.date_birth", "Person", "birth_date", "Subject"))
+
+    req_variants.append({
+        "variant_id": "request_qs_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_equals", "path": "$.meta.registry_code", "value": "REQUEST_QS"}
+            ]
+        },
+        "mappings": req_qs_mappings
+    })
+
+    # Request DZK (Log Format)
+    req_dzk_mappings = []
+    # Just map Request node if possible, or empty mappings to avoid quarantine
+    req_dzk_mappings.append(m("req_dzk", "$.data", "$.HEADER_Uxp-Service", "Request", "service_code", "Req")) # Dummy map
+
+    req_variants.append({
+        "variant_id": "request_dzk_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_equals", "path": "$.meta.registry_code", "value": "REQUEST_DZK"}
+            ]
+        },
+        "mappings": req_dzk_mappings
+    })
+
+    # ==========================================
     # REGISTER INSERTION
     # ==========================================
     
@@ -603,7 +1076,10 @@ def init_registers(db: Database):
         {"code": "DZK", "name": "State Land Cadastre", "variants": dzk_variants},
         {"code": "DRACS", "name": "Civil Status Registry", "variants": dracs_variants},
         {"code": "ERD", "name": "Power of Attorney Registry", "variants": erd_variants},
-        {"code": "COURT", "name": "Court Decisions", "variants": court_variants}
+        {"code": "COURT", "name": "Court Decisions", "variants": court_variants},
+        {"code": "MVS", "name": "Ministry of Internal Affairs (Vehicles)", "variants": mvs_variants},
+        {"code": "IDP", "name": "Internally Displaced Persons", "variants": idp_variants},
+        {"code": "REQUEST", "name": "Traceability Requests", "variants": req_variants}
     ]
 
     for reg in registers:

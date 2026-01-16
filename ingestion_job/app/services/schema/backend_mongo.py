@@ -14,7 +14,15 @@ class MongoSchemaRegistry(BaseSchemaRegistry):
     def __init__(self, mongo_uri: str, db_name: str):
         if MongoClient is None:
             raise RuntimeError("pymongo is not installed; install pymongo to use schema_backend=mongo")
-        self.client = MongoClient(mongo_uri)
+        
+        # Harden connection for unstable environments
+        self.client = MongoClient(
+            mongo_uri, 
+            tlsAllowInvalidCertificates=True,
+            connectTimeoutMS=60000,
+            socketTimeoutMS=60000,
+            serverSelectionTimeoutMS=60000
+        )
         self.db = self.client[db_name]
         self._entity_schemas: Dict[str, EntitySchema] = {}
         self._register_schemas: List[RegisterSchema] = []

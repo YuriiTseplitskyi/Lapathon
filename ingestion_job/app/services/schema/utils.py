@@ -139,6 +139,11 @@ def eval_predicate(doc: Dict[str, Any], pred: Dict[str, Any]) ->(Tuple)[bool, in
             should_not_exist = (val is not None)
         elif rule_type == "json_equals":
             should_not_exist = (val == rule.get("value"))
+        elif rule_type == "json_in":
+            should_not_exist = val in (rule.get("values") or [])
+        elif rule_type == "json_regex":
+            pat = rule.get("pattern") or ""
+            should_not_exist = isinstance(val, str) and re.search(pat, val) is not None
         
         if should_not_exist:
             reasons.append(f"none_failed_{rule_type}:{path}")
