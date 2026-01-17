@@ -8,24 +8,28 @@ The project is evolved into a set of specialized microservices, each handling a 
 
 ```text
 .
-├── detection_service/  # Risk analysis and fraud detection
-├── ingestion_job/      # Data ingestion into Neo4j
-├── profile_creator/    # Consolidated profile generation
-└── schema_updater/	# Schema inference and management
+├── person_graph_builder/   # Targeted AI graph investigation
+├── strict_graph_builder/   # Global strict-schema graph ingestion
+├── detection_service/      # AI corruption risk agent
+├── profile_creator/        # Profile synthesis & PDF generation
+└── schema_updater/         # Schema inference and management
 ```
 
 ## Services Overview
 
-### 1. Ingestion Job (`ingestion_job/`)
+### 1. Person Graph Builder (`person_graph_builder/`)
+**Targeted Investigation Service (AI-Driven)**
+*   **Scope**: **Microscopic / Specific Person**.
+*   **Method**: AI agents extract unstructured data, infer schemas, and resolve identities probabilistically.
+*   **Use Case**: "Deep Dive" into a specific suspect where data is messy or unstructured.
 
-Responsible for the initial ingestion of data into the Graph Database (Neo4j).
+### 2. Strict Graph Builder (`strict_graph_builder/`)
+**Global Graph Service (Rule-Based)**
+*   **Scope**: **Macroscopic / Population Scale**.
+*   **Method**: High-throughput ingestion of structured registry data using strict schemas.
+*   **Use Case**: Building the "Background Graph" of all people and companies to find paths and connections.
 
-* **Purpose**: Polls for unprocessed documents (e.g., from a MinIO bucket) and ingests nodes and relations into the Neo4j graph.
-* **Trigger**: Configured to run once per day or on-demand.
-* **Process**: Takes schema-parsed data and loads it into the graph.
-* **Inputs**: JSON, XML, HTML, tabular, and text files.
-
-### 2. Schema Updater (`schema_updater/`)
+### 3. Schema Updater (`schema_updater/`)
 
 Manages the understanding of data structures from various registries.
 
@@ -36,7 +40,7 @@ Manages the understanding of data structures from various registries.
   * Writes new schemas to the MongoDB Schema/Entity Registry.
   * Notifies human operators if a new entity candidate requires verification.
 
-### 3. Detection Service (`detection_service/`)
+### 4. Detection Service (`detection_service/`)
 **Corruption Investigation Agent**
 *   **Purpose**: A LangGraph-based agent that orchestrates complex investigations.
 *   **Workflow**:
@@ -46,7 +50,7 @@ Manages the understanding of data structures from various registries.
     4.  **Shell Companies**: Uncovers complex ownership structures.
 *   **Output**: Detailed corruption risk reports in Ukrainian.
 
-### 4. Profile Creator (`profile_creator/`)
+### 5. Profile Creator (`profile_creator/`)
 
 Synthesizes scattered data into a coherent view.
 
@@ -56,7 +60,7 @@ Synthesizes scattered data into a coherent view.
 
 ## Data Flow Summary
 
-1. **Ingestion**: Files arrive in MinIO -> `ingestion_job` puts them into Neo4j.
+1. **Ingestion**: Files arrive in MinIO -> `strict_graph_builder` puts them into Neo4j "Global Graph".
 2. **Schema**: If data structure changes -> `schema_updater` adapts the schema in MongoDB.
 3. **Analysis**: `detection_service` scans the graph for suspicious patterns.
 4. **Reporting**: `profile_creator` builds a comprehensive profile for analysts to review.

@@ -1,6 +1,12 @@
-# Ingestion Job Service
+# Strict Graph Builder (Global Graph Service)
 
-**Production-Ready Data Ingestion Pipeline** for NABU Anti-Corruption Knowledge Graph
+**Production-Ready "Global" Data Ingestion Pipeline**
+
+This service builds the **Main Knowledge Graph** for the entire population. It processes high-volume registry data using **strict, pre-defined schemas** to ensure consistency across millions of entities.
+
+*   **Scope**: Global (All People, All Companies).
+*   **Method**: Deterministic, Rule-Based, High-Throughput.
+*   **Goal**: Create the single source of truth for structured registry data.
 
 ## Current Status
 

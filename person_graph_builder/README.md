@@ -1,9 +1,13 @@
-# Person Graph Builder
+# Person Graph Builder (Targeted Investigation Service)
 
 ## Overview
-The **Person Graph Builder** is a dynamic, AI-powered service designed to construct a comprehensive knowledge graph centered around specific persons from raw data (primarily XML). 
+The **Person Graph Builder** is a dynamic, AI-powered service designed to build a **deep, targeted knowledge graph** for a specific individual (or small group).
 
-Unlike static ETL pipelines, this service uses Large Language Models (LLMs) to adaptively **discover schemas**, **extract complex relationships**, and **learn identity resolution rules** from the data itself.
+*   **Scope**: Local/Targeted (Specific Person of Interest).
+*   **Method**: AI-Driven, Probabilistic, Dynamic Schema.
+*   **Goal**: Uncover hidden connections and unstructured data for a specific investigation.
+
+Unlike static ETL pipelines, this service uses Large Language Models (LLMs) to:
 
 ## Core Core Concepts
 
