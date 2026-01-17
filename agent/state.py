@@ -15,6 +15,8 @@ class CorruptionAgentState(TypedDict):
     - Family builder node populates family_relationships and person_ids
     - Income/assets analyzer node populates income_assets_analysis
     - Proxy ownership analyzer node populates proxy_ownership_analysis
+    - Shell company analyzer node populates shell_company_analysis
+    - Summary node aggregates corruption_summary in Ukrainian
     """
     # Message history for agent reasoning
     messages: Annotated[List[AnyMessage], add_messages]
@@ -34,3 +36,6 @@ class CorruptionAgentState(TypedDict):
 
     # Shell Company Analysis Output
     shell_company_analysis: Optional[Dict[str, Any]]  # Shell/front company detection
+
+    # Final Ukrainian summaries by corruption pattern
+    corruption_summary: Optional[Dict[str, Any]]

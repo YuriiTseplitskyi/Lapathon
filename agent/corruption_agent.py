@@ -6,7 +6,13 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import END, START, StateGraph
 
 from agent.config import AgentConfig
-from agent.nodes import create_family_builder_node, create_income_assets_node, create_proxy_ownership_node, create_shell_company_node
+from agent.nodes import (
+    create_family_builder_node,
+    create_income_assets_node,
+    create_proxy_ownership_node,
+    create_shell_company_node,
+    create_summary_node,
+)
 from agent.state import CorruptionAgentState
 
 
@@ -15,7 +21,7 @@ class CorruptionDetectionAgent:
     Corruption detection agent with family relationship discovery, income/assets analysis, proxy ownership detection, and shell company detection.
 
     Architecture:
-    START -> family_builder -> income_assets_analyzer -> proxy_ownership_analyzer -> shell_company_analyzer -> END
+    START -> family_builder -> income_assets_analyzer -> proxy_ownership_analyzer -> shell_company_analyzer -> summary_generator -> END
     """
 
     def __init__(self, cfg: AgentConfig):
@@ -42,19 +48,22 @@ class CorruptionDetectionAgent:
         income_assets_node = create_income_assets_node(self.cfg)
         proxy_ownership_node = create_proxy_ownership_node(self.cfg)
         shell_company_node = create_shell_company_node(self.cfg)
+        summary_node = create_summary_node(self.cfg)
 
         # Add nodes to graph
         builder.add_node("family_builder", family_node)
         builder.add_node("income_assets_analyzer", income_assets_node)
         builder.add_node("proxy_ownership_analyzer", proxy_ownership_node)
         builder.add_node("shell_company_analyzer", shell_company_node)
+        builder.add_node("summary_generator", summary_node)
 
         # Define sequential edges
         builder.add_edge(START, "family_builder")
         builder.add_edge("family_builder", "income_assets_analyzer")
         builder.add_edge("income_assets_analyzer", "proxy_ownership_analyzer")
         builder.add_edge("proxy_ownership_analyzer", "shell_company_analyzer")
-        builder.add_edge("shell_company_analyzer", END)
+        builder.add_edge("shell_company_analyzer", "summary_generator")
+        builder.add_edge("summary_generator", END)
 
         return builder.compile()
 
@@ -66,7 +75,7 @@ class CorruptionDetectionAgent:
             target_person_query: Name, RNOKPP, or other identifier for the target person.
 
         Returns:
-            Dictionary containing family relationships, income/assets analysis, proxy ownership analysis, shell company analysis, and person_ids.
+            Dictionary containing family relationships, income/assets analysis, proxy ownership analysis, shell company analysis, pattern summaries in Ukrainian, and person_ids.
         """
         initial_state: CorruptionAgentState = {
             "messages": [HumanMessage(content=f"Analyze corruption patterns for: {target_person_query}")],
@@ -76,6 +85,7 @@ class CorruptionDetectionAgent:
             "income_assets_analysis": None,
             "proxy_ownership_analysis": None,
             "shell_company_analysis": None,
+            "corruption_summary": None,
         }
 
         result = self.graph.invoke(initial_state)
