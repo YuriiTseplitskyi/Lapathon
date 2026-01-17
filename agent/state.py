@@ -31,3 +31,6 @@ class CorruptionAgentState(TypedDict):
 
     # Proxy Ownership Analysis Output
     proxy_ownership_analysis: Optional[Dict[str, Any]]  # Proxy/nominee ownership detection
+
+    # Shell Company Analysis Output
+    shell_company_analysis: Optional[Dict[str, Any]]  # Shell/front company detection

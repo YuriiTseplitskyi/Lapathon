@@ -66,6 +66,7 @@ def main() -> None:
             "person_ids": result.get("person_ids"),
             "income_assets_analysis": result.get("income_assets_analysis"),
             "proxy_ownership_analysis": result.get("proxy_ownership_analysis"),
+            "shell_company_analysis": result.get("shell_company_analysis"),
             # Serialize messages to plain text to keep JSON output safe
             "messages": [
                 getattr(m, "content", str(m)) if m is not None else None
@@ -79,6 +80,7 @@ def main() -> None:
             "person_ids": result.get("person_ids"),
             "income_assets_analysis": result.get("income_assets_analysis"),
             "proxy_ownership_analysis": result.get("proxy_ownership_analysis"),
+            "shell_company_analysis": result.get("shell_company_analysis"),
         }
 
     output_json = json.dumps(output, ensure_ascii=False, indent=2)
@@ -97,6 +99,7 @@ def main() -> None:
         persons = output.get("person_ids", [])
         income_assets = output.get("income_assets_analysis", {})
         proxy_ownership = output.get("proxy_ownership_analysis", {})
+        shell_company = output.get("shell_company_analysis", {})
 
         print()
         print("=" * 60)
@@ -129,6 +132,19 @@ def main() -> None:
                 print(f"  Proxy Owners Found: {len(proxy_ownership.get('proxy_owners', []))}")
             if proxy_ownership.get("suspected_beneficiaries"):
                 print(f"  Suspected Beneficiaries: {len(proxy_ownership.get('suspected_beneficiaries', []))}")
+
+        # Show shell company summary
+        if isinstance(shell_company, dict) and shell_company.get("shell_companies_detected"):
+            print()
+            print("SHELL COMPANY ANALYSIS:")
+            print(f"  Detected: {shell_company.get('shell_companies_detected', False)}")
+            print(f"  Confidence: {shell_company.get('confidence_level', 'N/A')}")
+            if shell_company.get("summary"):
+                print(f"  Summary: {shell_company.get('summary')}")
+            if shell_company.get("shell_companies"):
+                print(f"  Shell Companies Found: {len(shell_company.get('shell_companies', []))}")
+            if shell_company.get("beneficial_owners"):
+                print(f"  Beneficial Owners: {len(shell_company.get('beneficial_owners', []))}")
 
 
 if __name__ == "__main__":
