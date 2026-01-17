@@ -186,7 +186,7 @@ Example uncertain case:
   "same_person_records": [
     {
       "person_ids": ["P1", "P5"],
-      "names": ["SVIFT KITANA", "ADELREIIVNA KITANA"],
+      "names": ["LASTNAME_A FIRSTNAME", "LASTNAME_B FIRSTNAME"],
       "reason": "marriage_surname_change"
     }
   ],
@@ -305,29 +305,70 @@ WHERE p.person_id = $person_id  // WRONG - will not work!
 - Adjust based on specific details (e.g., luxury trim levels, special editions)
 - Document your valuation reasoning in the evidence field
 
-## DETECTION RULES
+## RISK SCORING CRITERIA
 
-### HIGH Risk Indicators
-- **Extreme Gap**: Total estimated assets > 50x total declared income
-- **Luxury Vehicle + Low Income**: Owns luxury vehicle (Land Cruiser, Mercedes GLE/GLS, BMW X5/X6, Lexus LX) AND total income < 100,000 UAH
-- **Recent Property + Low Income**: Acquired property (жилий будинок or квартира) in 2022-2023 AND total income during those years < 100,000 UAH
-- **Zero Income + Assets**: Family member with ZERO declared income owns expensive assets (value > 500,000 UAH)
-- **Multiple Expensive Assets + Minimal Income**: Owns 2+ expensive items (each > 500,000 UAH) AND total income < 200,000 UAH
+### CRITICAL Risk (10/10)
 
-### MEDIUM Risk Indicators
-- **Significant Gap**: Total estimated assets > 10x total declared income
-- **Recent Vehicle + Low Income**: Owns vehicle year 2020+ worth > 500,000 UAH AND annual average income < 100,000 UAH
-- **Multiple Assets + Low Income**: Owns 2+ assets (any type) AND total income < 500,000 UAH
-- **Single Luxury Item + Low Income**: Owns one luxury asset (> 1,000,000 UAH) AND income < 300,000 UAH
+1. **Extreme Income-Asset Gap:**
+   - Total estimated assets > 50x total declared income
+   - Multiple luxury assets acquired in recent period
+   - Zero plausible legitimate source of funds
 
-### LOW Risk Indicators
-- **Old Assets**: All assets acquired before 2015 (could be explained by earlier unreported income or inheritance)
-- **Modest Assets + Some Income**: Single modest asset (< 500,000 UAH) with reasonable income history
-- **Small Gap**: Total assets < 5x total income
+2. **Luxury Assets + Minimal Income:**
+   - Owns 2+ luxury vehicles (Land Cruiser, Mercedes GLE/GLS, BMW X5/X6, Lexus LX) AND total income < 100,000 UAH
+   - Recent property (2020+) + luxury vehicle AND annual income < 100,000 UAH
+   - Family member with ZERO declared income owns expensive assets (value > 1,000,000 UAH)
+
+3. **Concentrated Recent Acquisitions:**
+   - Multiple expensive assets (each > 500,000 UAH) acquired within 1-2 years
+   - Total income during acquisition period is fraction of asset values
+   - Assets acquired at working age but no employment income
+
+### HIGH Risk (7-9/10)
+
+1. **Significant Income-Asset Gap:**
+   - Total estimated assets > 20x total declared income
+   - Owns luxury vehicle AND annual income < 100,000 UAH
+   - Recent property acquisition (2022+) AND total income < 150,000 UAH
+
+2. **Zero Income + Assets:**
+   - Family member with ZERO declared income owns assets worth > 500,000 UAH
+   - No employment record despite working age
+   - Assets acquired without documented income source
+
+3. **Multiple Assets + Low Income:**
+   - Owns 2+ expensive items (each > 500,000 UAH) AND total income < 200,000 UAH
+   - Assets diversified (property + vehicle) suggesting intentional wealth accumulation
+
+### MEDIUM Risk (4-6/10)
+
+1. **Moderate Income-Asset Gap:**
+   - Total estimated assets > 10x total declared income
+   - Owns vehicle year 2020+ worth > 500,000 UAH AND average annual income < 100,000 UAH
+   - Single luxury asset (> 1,000,000 UAH) AND income < 300,000 UAH
+
+2. **Multiple Assets + Some Income:**
+   - Owns 2+ assets (any type) AND total income < 500,000 UAH
+   - Some documented income history exists
+   - Possible legitimate explanations (loans, inheritance, savings)
+
+### LOW Risk (1-3/10)
+
+1. **Historical Assets:**
+   - All assets acquired before 2015 (could be explained by earlier income or inheritance)
+   - Old vehicles with lower current value
+   - Assets acquired when younger with different income situation
+
+2. **Modest Assets + Reasonable Income:**
+   - Single modest asset (< 500,000 UAH) with reasonable income history
+   - Small gap: Total assets < 5x total income
+   - Asset value proportional to career/life stage
 
 ### NONE (No Risk)
-- **No Assets Found**: No property or vehicles in database
-- **Assets Match Income**: Total assets value is proportional to declared income (< 3x ratio)
+
+- No property or vehicles found in database
+- Assets match income: Total assets value is proportional to declared income (< 3x ratio)
+- Clear documentation of legitimate acquisition sources
 
 ## OUTPUT FORMAT
 
@@ -335,103 +376,94 @@ Return a JSON object with the following structure:
 
 ```json
 {
-  "risk_level": "HIGH" | "MEDIUM" | "LOW" | "NONE",
+  "risk_level": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "NONE",
   "summary": "Brief 1-2 sentence summary of findings",
   "total_declared_income": {
-    "amount_uah": 83250,
-    "period": "2019-2022",
+    "amount_uah": 150000,
+    "period": "2019-2023",
     "breakdown_by_person": [
       {
-        "person_id": ["P3", "P7"],
-        "full_name": "СВІФТ МАГДАЛЕНА СИГІЗМУНДОВНА",
-        "total_income": 83250,
-        "years_covered": ["2019", "2020", "2021", "2022"],
+        "person_id": ["P1", "P2"],
+        "full_name": "LASTNAME FIRSTNAME MIDDLENAME",
+        "total_income": 150000,
+        "years_covered": ["2019", "2020", "2021", "2022", "2023"],
         "income_by_year": {
-          "2019": 21000,
-          "2020": 46200,
-          "2021": 7650,
-          "2022": 8400
+          "2019": 25000,
+          "2020": 30000,
+          "2021": 35000,
+          "2022": 30000,
+          "2023": 30000
         }
       }
     ]
   },
   "total_estimated_assets": {
-    "amount_uah": 7000000,
+    "amount_uah": 5000000,
     "breakdown_by_type": {
       "properties": [
         {
-          "person_id": ["P3", "P7"],
-          "person_name": "СВІФТ МАГДАЛЕНА СИГІЗМУНДОВНА",
+          "person_id": ["P1", "P2"],
+          "person_name": "LASTNAME FIRSTNAME MIDDLENAME",
           "property_type": "жилий будинок",
-          "acquisition_date": "2022-11-15",
+          "acquisition_date": "2022-05-15",
           "estimated_value": 2000000,
           "valuation_basis": "residential house acquired 2022, mid-range estimate"
         },
         {
-          "person_id": ["P3", "P7"],
-          "person_name": "СВІФТ МАГДАЛЕНА СИГІЗМУНДОВНА",
+          "person_id": ["P1", "P2"],
+          "person_name": "LASTNAME FIRSTNAME MIDDLENAME",
           "property_type": "земельна ділянка",
-          "acquisition_date": "2022-11-15",
+          "acquisition_date": "2022-05-15",
           "estimated_value": 500000,
           "valuation_basis": "land plot, mid-range estimate"
         }
       ],
       "vehicles": [
         {
-          "person_id": ["P3", "P7"],
-          "person_name": "СВІФТ МАГДАЛЕНА СИГІЗМУНДОВНА",
+          "person_id": ["P1", "P2"],
+          "person_name": "LASTNAME FIRSTNAME MIDDLENAME",
           "make": "TOYOTA",
           "model": "LAND CRUISER",
           "year": "2022",
           "estimated_value": 2500000,
           "valuation_basis": "luxury SUV 2022, high-end range"
-        },
-        {
-          "person_id": ["P3", "P7"],
-          "person_name": "СВІФТ МАГДАЛЕНА СИГІЗМУНДОВНА",
-          "make": "MERCEDES-BENZ",
-          "model": "GLE 400",
-          "year": "2023",
-          "estimated_value": 2000000,
-          "valuation_basis": "luxury SUV 2023, mid-range estimate"
         }
       ]
     }
   },
-  "income_assets_ratio": 84.0,
+  "income_assets_ratio": 33.3,
   "suspicious_items": [
     {
-      "person_id": ["P3", "P7"],
-      "person_name": "СВІФТ МАГДАЛЕНА СИГІЗМУНДОВНА",
+      "person_id": ["P1", "P2"],
+      "person_name": "LASTNAME FIRSTNAME MIDDLENAME",
       "item_type": "vehicle",
       "description": "TOYOTA LAND CRUISER 2022",
       "estimated_value": 2500000,
       "acquisition_period": "2022",
-      "person_income_same_period": 8400,
+      "person_income_same_period": 30000,
       "red_flag": "luxury_vehicle_with_minimal_income",
-      "explanation": "Person owns luxury vehicle worth 2.5M UAH but only declared 8,400 UAH income in 2022"
+      "explanation": "Person owns luxury vehicle worth 2.5M UAH but only declared 30,000 UAH income in acquisition year"
     },
     {
-      "person_id": ["P3", "P7"],
-      "person_name": "СВІФТ МАГДАЛЕНА СИГІЗМУНДОВНА",
+      "person_id": ["P1", "P2"],
+      "person_name": "LASTNAME FIRSTNAME MIDDLENAME",
       "item_type": "property",
-      "description": "жилий будинок registered 2022-11-15",
+      "description": "жилий будинок registered 2022-05-15",
       "estimated_value": 2000000,
       "acquisition_period": "2022",
-      "person_income_same_period": 8400,
+      "person_income_same_period": 30000,
       "red_flag": "recent_property_with_minimal_income",
-      "explanation": "Person acquired residential house worth 2M UAH in 2022 but only declared 8,400 UAH income that year"
+      "explanation": "Person acquired residential house worth 2M UAH in 2022 but only declared 30,000 UAH income that year"
     }
   ],
   "evidence": [
-    "P3/P7 (СВІФТ МАГДАЛЕНА СИГІЗМУНДОВНА) total income 2019-2022: 83,250 UAH",
-    "P3/P7 owns: жилий будинок (2M UAH, acquired 2022-11-15)",
-    "P3/P7 owns: земельна ділянка (500K UAH, acquired 2022-11-15)",
-    "P3/P7 owns: TOYOTA LAND CRUISER 2022 (2.5M UAH estimated)",
-    "P3/P7 owns: MERCEDES-BENZ GLE 400 2023 (2M UAH estimated)",
-    "Total estimated assets: 7,000,000 UAH",
-    "Asset-to-income ratio: 84x (7,000,000 / 83,250)",
-    "Triggers HIGH risk: luxury vehicles + recent property + extremely low income + ratio > 50x"
+    "P1/P2 (LASTNAME FIRSTNAME MIDDLENAME) total income 2019-2023: 150,000 UAH",
+    "P1/P2 owns: жилий будинок (2M UAH, acquired 2022-05-15)",
+    "P1/P2 owns: земельна ділянка (500K UAH, acquired 2022-05-15)",
+    "P1/P2 owns: TOYOTA LAND CRUISER 2022 (2.5M UAH estimated)",
+    "Total estimated assets: 5,000,000 UAH",
+    "Asset-to-income ratio: 33x (5,000,000 / 150,000)",
+    "Triggers HIGH risk: luxury vehicles + recent property + low income + ratio > 10x"
   ],
   "family_network_note": "Analysis covers all family members identified in previous step. If multiple family members have assets, consider proxy ownership patterns."
 }
