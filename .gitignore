@@ -6,3 +6,4 @@ nabu_data/
 *.pdf
 .claude
 tmpclaude*
+CORRUPTION_AGENT_PHASE*
