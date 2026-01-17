@@ -10,14 +10,15 @@ except ImportError:
 class Extractor:
     def __init__(self, config: Config):
         self.config = config
-        self.client = None
-        if config.OPENAI_API_KEY and OpenAI:
-            self.client = OpenAI(api_key=config.OPENAI_API_KEY)
-        
         self.model_config = config.MODEL_CONFIGS.get("extractor", {})
         self.model = self.model_config.get("model", "gpt-5.2")
         self.temperature = self.model_config.get("temperature", 0.0)
         self.reasoning_effort = self.model_config.get("reasoning_effort")
+        
+        self.client = None
+        if config.OPENAI_API_KEY and OpenAI:
+            base_url = self.model_config.get("base_url")
+            self.client = OpenAI(api_key=config.OPENAI_API_KEY, base_url=base_url)
 
     def extract(self, content: str, entity_types: List[Dict[str, Any]], doc_name: str = "doc") -> Dict[str, Any]:
         """

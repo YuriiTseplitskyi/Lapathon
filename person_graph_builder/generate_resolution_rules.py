@@ -18,9 +18,10 @@ class RuleGenerator:
         self.model = self.model_config.get("model", "gpt-5.2")
         self.temperature = self.model_config.get("temperature", 0.2)
         self.reasoning_effort = self.model_config.get("reasoning_effort")
+        base_url = self.model_config.get("base_url")
 
         if self.config.OPENAI_API_KEY:
-             self.client = OpenAI(api_key=self.config.OPENAI_API_KEY)
+             self.client = OpenAI(api_key=self.config.OPENAI_API_KEY, base_url=base_url)
         else:
              raise ValueError("OPENAI_API_KEY not found in Config")
 

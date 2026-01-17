@@ -135,12 +135,17 @@ def extract_schema_from_content(content, client, existing_types=None):
 
 def main():
     api_key = os.environ.get("OPENAI_API_KEY")
+    
+    # Get base_url from config if available
+    discovery_cfg = Config.MODEL_CONFIGS.get("discovery", {})
+    base_url = discovery_cfg.get("base_url")
+
     client = None
     if not api_key:
         print("Warning: OPENAI_API_KEY not found. Switching to Heuristic Mode.")
         raise Exception("OPENAI_API_KEY not found")
     else:
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, base_url=base_url)
     
     all_files = []
     for d in DIRECTORIES:

@@ -1,7 +1,19 @@
 import os
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
+# Load .env file explicitly
+_base_dir = os.path.dirname(os.path.abspath(__file__))
+if load_dotenv:
+    env_path = os.path.join(_base_dir, ".env")
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+
 class Config:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    BASE_DIR = _base_dir
     DOCUMENTS_DIR = os.environ.get("DOCUMENTS_DIR", "data")
     SCHEMAS_DIR = os.environ.get("SCHEMAS_DIR", os.path.join(BASE_DIR, "schemas"))
     OUTPUT_DIR = os.environ.get("OUTPUT_DIR", os.path.join(BASE_DIR, "output"))
@@ -13,19 +25,22 @@ class Config:
     # Model Configurations
     MODEL_CONFIGS = {
         "extractor": {
-            "model": "gpt-4.1",
+            "model": "lapa-function-calling",
             "temperature": 0.0,
-            "reasoning_effort": None 
+            "reasoning_effort": None,
+            "base_url": "https://api.lapathoniia.top/" # Optional: Custom API URL (e.g. for local models)
         },
         "discovery": {
             "model": "gpt-5.2",
             "temperature": 0.2,
-            "reasoning_effort": None
+            "reasoning_effort": None,
+            "base_url": None # Optional: Custom API URL (e.g. for local models)
         },
         "rule_generator": {
             "model": "gpt-5.2",
             "temperature": 0.2,
-            "reasoning_effort": "medium"
+            "reasoning_effort": "medium",
+            "base_url": None # Optional: Custom API URL (e.g. for local models)
         }
     }
     
