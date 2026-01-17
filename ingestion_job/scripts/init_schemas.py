@@ -31,12 +31,21 @@ def now_utc():
     return datetime.now(timezone.utc)
 
 def make_entity_schema(name, props, identity_keys=[]):
-    # Convert simple prop list to EntityPropertySchema objects
+    # Convert prop list to EntityPropertySchema objects
     properties = []
+    
+    # Props can be simple list of strings (legacy) or list of tuples (name, desc)
     for p in props:
+        if isinstance(p, (tuple, list)) and len(p) == 2:
+            prop_name, prop_desc = p
+        else:
+            prop_name = p
+            prop_desc = None
+            
         properties.append({
-            "name": p,
+            "name": prop_name,
             "type": "string",
+            "description": prop_desc,  # Added description
             "is_required": False,
             "change_type": "rarely_changed",
             "normalize": []
@@ -84,10 +93,28 @@ def init_entities(db):
     # 1. Person - COMPREHENSIVE
     entities.append(make_entity_schema(
         "Person", 
-        ["person_id", "gender", "unzr", "birth_date", "citizenship", "registry_source", "registry_place",
-         "last_name", "birth_place", "middle_name", "rnokpp", "full_name", "first_name", "first_name_en",
-         # Passport / Document fields merged
-         "passport_series", "passport_number", "passport_issue_date", "passport_issuer", "photo_url", "has_photo"],
+        [
+            ("person_id", "Unique internal identifier for the person node."),
+            ("gender", "Gender of the person."),
+            ("unzr", "Unique Record Number in the Demographic Registry."),
+            ("birth_date", "Date of birth (YYYY-MM-DD)."),
+            ("citizenship", "Country of citizenship."),
+            ("registry_source", "Source registry where this person record originated."),
+            ("registry_place", "Place of registration or residence."),
+            ("last_name", "Last name."),
+            ("birth_place", "Place of birth as recorded in documents."),
+            ("middle_name", "Middle name (Patronymic)."),
+            ("rnokpp", "Registration number of the taxpayer's account card (Tax ID)."),
+            ("full_name", "Full name of the person (Last, First, Middle)."),
+            ("first_name", "First name."),
+            ("first_name_en", "First name transliterated to English (from passport)."),
+            ("passport_series", "Series of the passport document."),
+            ("passport_number", "Number of the passport document."),
+            ("passport_issue_date", "Date when the passport was issued."),
+            ("passport_issuer", "Authority that issued the passport."),
+            ("photo_url", "URL to the stored photo of the person."),
+            ("has_photo", "Boolean flag indicating if a photo is available.")
+        ],
         [
             {"properties": ["rnokpp"], "when": {"exists": ["rnokpp"]}},
             {"properties": ["full_name"], "when": {"exists": ["full_name"]}} 
@@ -97,131 +124,283 @@ def init_entities(db):
     # 2. Vehicle - COMPREHENSIVE
     entities.append(make_entity_schema(
         "Vehicle",
-        ["vehicle_id", "year", "color", "registration_number", "vin", "model", "make", "car_id",
-         "description", "vehicle_type", "property_type", "asset_type"],
+        [
+            ("vehicle_id", "Unique internal identifier for the vehicle node."),
+            ("year", "Year of manufacture."),
+            ("color", "Color of the vehicle."),
+            ("registration_number", "Official license plate number."),
+            ("vin", "Vehicle Identification Number (unique 17-character code)."),
+            ("model", "Specific model of the vehicle (e.g., Octavia)."),
+            ("make", "Manufacturer brand of the vehicle (e.g., Skoda)."),
+            ("car_id", "External identifier from source registry (e.g., MVS)."),
+            ("description", "Textual description of the vehicle."),
+            ("vehicle_type", "Type of vehicle (e.g., passenger car, truck)."),
+            ("property_type", "Classification of the property type (e.g., transport)."),
+            ("asset_type", "General asset category (usually 'vehicle')."),
+            ("body", "Body type of the vehicle (e.g., Sedan, SUV)."),
+            ("fuel", "Fuel type (e.g., Gasoline, Diesel)."),
+            ("capacity", "Engine capacity in cubic centimeters."),
+            ("engine_num", "Engine serial number."),
+            ("weight", "Weight of the vehicle (kg).")
+        ],
         [{"properties": ["vin"], "when": {"exists": ["vin"]}}]
     ))
 
     # 3. CivilEvent
     entities.append(make_entity_schema(
         "CivilEvent",
-        ["event_id", "response_id", "date", "registry_office", "event_type", "act_number"],
+        [
+            ("event_id", "Unique internal identifier for the event."),
+            ("response_id", "Identifier from the source response."),
+            ("date", "Date when the event occurred."),
+            ("registry_office", "Civil registry office that recorded the event."),
+            ("event_type", "Type of event (e.g., Marriage, Divorce, Birth)."),
+            ("act_number", "Registration number of the civil status act.")
+        ],
         [{"properties": ["act_number"], "when": {"exists": ["act_number"]}}]
     ))
     
     # 4. CourtCase
-    entities.append(make_entity_schema("CourtCase", ["court_id", "case_id", "case_number"]))
+    entities.append(make_entity_schema(
+        "CourtCase", 
+        [
+            ("court_id", "Internal identifier linking to the court."),
+            ("case_id", "Unique internal identifier for the case."),
+            ("case_number", "Official number assigned to the court case.")
+        ]
+    ))
     
     # 5. Court
-    entities.append(make_entity_schema("Court", ["court_id", "court_name", "court_code"]))
+    entities.append(make_entity_schema(
+        "Court", 
+        [
+            ("court_id", "Unique internal identifier for the court."),
+            ("court_name", "Official name of the court."),
+            ("court_code", "Official code identifying the court.")
+        ]
+    ))
     
     # 6. CourtDecision
     entities.append(make_entity_schema(
         "CourtDecision", 
-        ["court_id", "decision_id", "reg_num", "court_name", "case_number", "decision_date", "decision_type",
-         "content_url", "content_hash", "content_snippet"]
+        [
+            ("court_id", "Identifier of the court that made the decision."),
+            ("decision_id", "Unique internal identifier for the decision."),
+            ("reg_num", "Registration number of the decision in the court registry."),
+            ("court_name", "Name of the court (denormalized for convenience)."),
+            ("case_number", "Reference to the case number this decision belongs to."),
+            ("decision_date", "Date when the decision was adjudicated."),
+            ("decision_type", "Type of decision (e.g., ruling, sentence, decree)."),
+            ("content_url", "URL to the full text or document of the decision."),
+            ("content_hash", "Hash of the decision content for integrity/deduplication."),
+            ("content_snippet", "Short text snippet or summary of the decision.")
+        ]
     ))
     
     # 7. IncomeRecord
     entities.append(make_entity_schema(
         "IncomeRecord",
-        ["person_id", "organization_id", "period_id", "income_id", "tax_amount", "income_type_code",
-         "tax_transferred", "response_id", "income_accrued", "income_paid", "income_amount", "tax_charged"]
+        [
+            ("person_id", "Identifier of the person receiving income."),
+            ("organization_id", "Identifier of the organization paying income (Tax Agent)."),
+            ("period_id", "Identifier of the reporting period."),
+            ("income_id", "Unique internal identifier for the income record."),
+            ("tax_amount", "Total tax amount associated with this income."),
+            ("income_type_code", "Code indicating the type of income (e.g., salary, dividends)."),
+            ("tax_transferred", "Amount of tax actually transferred to budget."),
+            ("response_id", "Source response identifier."),
+            ("income_accrued", "Amount of income accrued (earned)."),
+            ("income_paid", "Amount of income actually paid out."),
+            ("income_amount", "General income amount field (fallback)."),
+            ("tax_charged", "Amount of tax charged.")
+        ]
     ))
     
     # 8. Period
-    entities.append(make_entity_schema("Period", ["period_id", "year", "quarter"]))
+    entities.append(make_entity_schema(
+        "Period", 
+        [
+            ("period_id", "Unique internal identifier for the period."),
+            ("year", "Fiscal year."),
+            ("quarter", "Fiscal quarter (1-4).")
+        ]
+    ))
     
     # 9. Organization
     entities.append(make_entity_schema(
         "Organization", 
-        ["name", "organization_id", "org_type", "org_code"],
+        [
+            ("name", "Official name of the organization."),
+            ("organization_id", "Unique internal identifier for the organization."),
+            ("org_type", "Type of organization (e.g., LLC, JSC)."),
+            ("org_code", "Internal code (often same as EDRPOU)."),
+            ("edrpou", "Unified State Register of Enterprises and Organizations of Ukraine code.")
+        ],
         [{"properties": ["org_code"], "when": {"exists": ["org_code"]}}]
     ))
     
     # 10. OwnershipRight
     entities.append(make_entity_schema(
         "OwnershipRight",
-        ["property_id", "right_id", "rn_num", "registrar", "right_reg_date", "pr_state",
-         "doc_type", "doc_type_extension", "right_type", "doc_date", "doc_publisher", "share"]
+        [
+            ("property_id", "Identifier of the related property."),
+            ("right_id", "Unique internal identifier for the right."),
+            ("rn_num", "Registration number of the right."),
+            ("registrar", "Authority or registrar who recorded the right."),
+            ("right_reg_date", "Date when the right was registered."),
+            ("pr_state", "Current state of the right (e.g., Active, Closed)."),
+            ("doc_type", "Type of document establishing the right."),
+            ("doc_type_extension", "Additional details about the document type."),
+            ("right_type", "Type of right (e.g., Ownership, Lease, Mortgage)."),
+            ("doc_date", "Date of the document establishing the right."),
+            ("doc_publisher", "Issuer of the document establishing the right."),
+            ("share", "Share of ownership (e.g., '1/1', '1/2').")
+        ]
     ))
 
     # 10b. Request (Traceability)
     entities.append(make_entity_schema(
         "Request",
-        ["request_id", "date", "source_system", "user_id"],
+        [
+            ("request_id", "Unique identifier of the request."),
+            ("date", "Timestamp when the request was made."),
+            ("source_system", "System that initiated the request."),
+            ("user_id", "Identifier of the user who made the request.")
+        ],
         [{"properties": ["request_id"], "when": {"exists": ["request_id"]}}]
     ))
     
     # 11. RealEstateProperty (Buildings, Apartments)
     entities.append(make_entity_schema(
         "RealEstateProperty",
-        ["property_id", "reg_num", "registration_date", "re_type", "state", "area", "area_unit", "description", "asset_type"],
+        [
+            ("property_id", "Unique internal identifier for the property."),
+            ("reg_num", "Registration number in the Registry of Real Property (RRP)."),
+            ("registration_date", "Date of property registration."),
+            ("re_type", "Type of real estate (e.g., Apartment, House)."),
+            ("state", "Current state of the property record."),
+            ("area", "Total area of the property."),
+            ("area_unit", "Unit of measurement for area (e.g., sq.m)."),
+            ("description", "Textual description or address summary."),
+            ("asset_type", "General asset category (constant 'real_estate').")
+        ],
         [{"properties": ["reg_num"], "when": {"exists": ["reg_num"]}}]
     ))
 
     # 12. LandParcel (Land)
     entities.append(make_entity_schema(
         "LandParcel",
-        ["property_id", "cad_num", "area", "area_unit", "purpose", "asset_type"],
+        [
+            ("property_id", "Unique internal identifier for the land parcel."),
+            ("cad_num", "Cadastral number of the land parcel."),
+            ("area", "Area of the land parcel."),
+            ("area_unit", "Unit of measurement for area (e.g., ha)."),
+            ("purpose", "Designated purpose of the land (e.g., agriculture, construction)."),
+            ("asset_type", "General asset category (constant 'land').")
+        ],
         [{"properties": ["cad_num"], "when": {"exists": ["cad_num"]}}]
     ))
     
     # 13. Property (Generic / Unclassified - Deprecated but kept for fallback)
     entities.append(make_entity_schema(
         "Property",
-        ["property_id", "reg_num", "registration_date", "re_type", "state", "cad_num", "area", "area_unit", "asset_type"],
+        [
+            ("property_id", "Unique internal identifier for the property."),
+            ("reg_num", "Registration number."),
+            ("registration_date", "Date of registration."),
+            ("re_type", "Type of property."),
+            ("state", "State of the record."),
+            ("cad_num", "Cadastral number (if applicable)."),
+            ("area", "Area value."),
+            ("area_unit", "Area unit."),
+            ("asset_type", "Asset category.")
+        ],
         [{"properties": ["reg_num"], "when": {"exists": ["reg_num"]}}]
     ))
     
     # 12. Address
     entities.append(make_entity_schema(
         "Address",
-        ["address_id", "street", "region", "house", "apartment", "city", "address_line", "district", "koatuu"]
+        [
+            ("address_id", "Unique internal identifier for the address."),
+            ("street", "Street name."),
+            ("region", "Oblast or region name."),
+            ("house", "House number."),
+            ("apartment", "Apartment or office number."),
+            ("city", "City, town, or village name."),
+            ("address_line", "Full unstructured address line (if structured parts missing)."),
+            ("district", "Raion or district name."),
+            ("koatuu", "KOATUU administrative unit code.")
+        ]
     ))
     
     # 13. Identifier
-    entities.append(make_entity_schema("Identifier", ["identifier_id", "identifier_value", "identifier_type"]))
+    entities.append(make_entity_schema(
+        "Identifier", 
+        [
+            ("identifier_id", "Unique internal identifier."),
+            ("identifier_value", "The actual value of the identifier."),
+            ("identifier_type", "Type of identifier (e.g., UNZR, RNOKPP).")
+        ]
+    ))
     
     # 14. TaxAgent
     entities.append(make_entity_schema(
         "TaxAgent",
-        ["name", "organization_id", "org_type", "org_code"],
+        [
+            ("name", "Name of the tax agent."),
+            ("organization_id", "Internal identifier for the tax agent organization."),
+            ("org_type", "Organization type."),
+            ("org_code", "EDRPOU code of the tax agent.")
+        ],
         [{"properties": ["org_code"], "when": {"exists": ["org_code"]}}]
     ))
     
     # 15. VehicleRegistration
     entities.append(make_entity_schema(
         "VehicleRegistration",
-        ["vehicle_id", "registration_id", "registration_date", "opercode", "dep_reg_name", "doc_id", "status"]
+        [
+            ("vehicle_id", "Reference to the registered vehicle."),
+            ("registration_id", "Unique identifier for the registration record."),
+            ("registration_date", "Date of the registration operation."),
+            ("opercode", "Code of the operation performed."),
+            ("operation_name", "Name/description of the operation performed."),
+            ("dep_reg_name", "Name of the registration department."),
+            ("doc_id", "Reference to the registration document."),
+            ("status", "Status of the registration.")
+        ],
+        [{"properties": ["registration_id"], "when": {"exists": ["registration_id"]}}]
     ))
 
     # 16. Document (Passport etc)
     entities.append(make_entity_schema(
         "Document",
-        ["document_id", "doc_number", "doc_series", "type", "date_issue", "dep_out", "status", "expiration_date"],
+        [
+            ("document_id", "Unique internal identifier for the document."),
+            ("doc_number", "Document number."),
+            ("doc_series", "Document series."),
+            ("type", "Type of document (e.g., PASSPORT)."),
+            ("date_issue", "Date when the document was issued."),
+            ("dep_out", "Authority that issued the document."),
+            ("status", "Current status of the document (e.g., Valid, Stolen)."),
+            ("expiration_date", "Date when the document expires.")
+        ],
         [{"properties": ["doc_number", "doc_series"], "when": {"exists": ["doc_number"]}}]
     ))
 
     # 17. Activity (NACE/KVED)
     entities.append(make_entity_schema(
         "Activity",
-        ["activity_id", "code", "name", "is_primary"]
+        [
+            ("activity_id", "Unique internal identifier."),
+            ("code", "Activity code (e.g., 62.01)."),
+            ("name", "Description of the activity."),
+            ("is_primary", "Boolean indicating if this is the primary activity.")
+        ]
     ))
-
-    # Update Organization props
-    # (Re-injecting Organization with edrpou)
-    # Finding index of Organization... easier to just append, existing `make_entity_schema` creates list.
-    # But I should update the existing one if possible, or just add `edrpou` to the list above in `replace_file_content` block?
-    # I am replacing lines 161-232 of original file (which contains init_rels too).
-    # I will rewrite the end of init_entities and init_relationships fully.
 
     # Upsert
     for e in entities:
-        if e["entity_name"] == "Organization":
-            e["properties"].append({
-                "name": "edrpou", "type": "string", "is_required": False, "change_type": "rarely_changed", "normalize": []
-            })
         coll.replace_one({"entity_name": e["entity_name"]}, e, upsert=True)
     
     print(f"Inserted {len(entities)} entity schemas.")
@@ -233,6 +412,21 @@ def make_rel_schema(name, rel_type, from_ent, to_ent, props=[], from_ref=None, t
     f_ref = from_ref if from_ref else from_ent
     t_ref = to_ref if to_ref else to_ent
     
+    # Properties with descriptions
+    # props can be list of strings or list of tuples
+    properties = []
+    for p in props:
+        if isinstance(p, (tuple, list)) and len(p) == 2:
+            p_name, p_desc = p
+        else:
+            p_name = p
+            p_desc = None
+            
+        properties.append({
+            "name": p_name,
+            "description": p_desc
+        })
+
     return {
         "relationship_name": name,
         "neo4j": {
@@ -253,7 +447,7 @@ def make_rel_schema(name, rel_type, from_ent, to_ent, props=[], from_ref=None, t
                     "from": {"entity_ref": f_ref},
                     "to": {"entity_ref": t_ref}
                 },
-                "properties": [{"name": p} for p in props]
+                "properties": properties
             }
         ],
         "uniqueness": {
@@ -275,17 +469,18 @@ def init_relationships(db):
     rels = []
     
     # RRP Relationships
-    # RRP Relationships
     # Right -> Property (RealEstateProperty or LandParcel or Property)
-    # Since we can have multiple targets for "Prop" ref in pipeline (based on label), we should ideally support multiple matching.
-    # But init_schemas relationship definition is strict on labels (Neo4j Type definition).
-    # We will define relationships for RealEstateProperty.
     
     # OwnershipRight -> RealEstateProperty
     rels.append(make_rel_schema("OwnershipRight_RIGHT_TO_RealEstateProperty", "RIGHT_TO", "OwnershipRight", "RealEstateProperty", [], from_ref="Right", to_ref="Prop"))
     
     # Person (Owner) -> Right
-    rels.append(make_rel_schema("Person_HAS_RIGHT_OwnershipRight", "HAS_RIGHT", "Person", "OwnershipRight", ["role"], from_ref="Owner", to_ref="Right"))
+    rels.append(make_rel_schema(
+        "Person_HAS_RIGHT_OwnershipRight", 
+        "HAS_RIGHT", "Person", "OwnershipRight", 
+        [("role", "The role the person plays regarding this right (e.g., Owner, Tenant).")], 
+        from_ref="Owner", to_ref="Right"
+    ))
     
     # RealEstateProperty -> Address
     rels.append(make_rel_schema("RealEstateProperty_LOCATED_AT_Address", "LOCATED_AT", "RealEstateProperty", "Address", [], from_ref="Prop", to_ref="Addr"))
@@ -294,46 +489,45 @@ def init_relationships(db):
     # TaxAgent -> Income
     rels.append(make_rel_schema("Organization_PAID_INCOME_IncomeRecord", "PAID_INCOME", "Organization", "IncomeRecord", [], from_ref="TaxAgent", to_ref="IncRec"))
     # Person (Main) -> Income
-    # Note: MainPerson is Root scope, IncRec is nested. Needs relationship builder robust enough (which I haven't fixed yet, but let's define it correctly first).
     rels.append(make_rel_schema("Person_HAS_INCOME_IncomeRecord", "HAS_INCOME", "Person", "IncomeRecord", [], from_ref="MainPerson", to_ref="IncRec"))
 
     # EDR Relationships
     # Org -> Addr
     rels.append(make_rel_schema("Organization_HAS_ADDRESS_Address", "HAS_ADDRESS", "Organization", "Address", [], from_ref="Org", to_ref="OrgAddr"))
-    # Org -> Head (Person)
-    # We mapped Head (Person). Need relationship.
-    # Person_IS_HEAD_OF_Organization? 
-    # Or Organization_HAS_HEAD_Person?
-    # Let's add one. Labels: Organization, Person.
+    # Org -> Person (Head)
     rels.append(make_rel_schema("Organization_HAS_HEAD_Person", "HAS_HEAD", "Organization", "Person", [], from_ref="Org", to_ref="Head"))
-
-    # EIS Relationships - Converted to Attributes
-    # Person -> Document (Removed, now attributes)
-    # Issuer -> Document (Removed)
 
     # Request Relationships
     rels.append(make_rel_schema("Request_SEARCHED_Person", "SEARCHED", "Request", "Person", [], from_ref="Req", to_ref="Subject"))
     
     # Request -> Result (Answer)
-    # Linking distinct roles in ERD answer
     rels.append(make_rel_schema("Request_RETURNED_Grantor", "RETURNED", "Request", "Person", [], from_ref="Req", to_ref="Grantor"))
     rels.append(make_rel_schema("Request_RETURNED_Representative", "RETURNED", "Request", "Person", [], from_ref="Req", to_ref="Representative"))
 
     # ERD Relationships (Power of Attorney / Vehicle)
     # Grantor -> Vehicle
-    rels.append(make_rel_schema("Person_OWNS_VEHICLE_Vehicle", "OWNS_VEHICLE", "Person", "Vehicle", ["role"], from_ref="Grantor", to_ref="ProxyVehicle"))
+    rels.append(make_rel_schema(
+        "Person_OWNS_VEHICLE_Vehicle", 
+        "OWNS_VEHICLE", "Person", "Vehicle", 
+        [("role", "The nature of ownership or usage role (e.g., Owner, User).")], 
+        from_ref="Grantor", to_ref="ProxyVehicle"
+    ))
     
     # Court Relationships
     rels.append(make_rel_schema("CourtCase_IN_COURT_Court", "IN_COURT", "CourtCase", "Court", [], from_ref="CaseNode", to_ref="CourtNode"))
     rels.append(make_rel_schema("CourtDecision_FOR_CASE_CourtCase", "FOR_CASE", "CourtDecision", "CourtCase", [], from_ref="DecisionNode", to_ref="CaseNode"))
-    rels.append(make_rel_schema("CourtDecision_INVOLVES_Person", "INVOLVES", "CourtDecision", "Person", ["role"], from_ref="DecisionNode", to_ref="CourtPerson"))
+    rels.append(make_rel_schema(
+        "CourtDecision_INVOLVES_Person", 
+        "INVOLVES", "CourtDecision", "Person", 
+        [("role", "The role of the person in the court decision (e.g., Plaintiff, Defendant).")], 
+        from_ref="DecisionNode", to_ref="CourtPerson"
+    ))
 
     # Person -> Document (EIS)
     rels.append(make_rel_schema("Person_HAS_DOCUMENT_Document", "HAS_DOCUMENT", "Person", "Document", [], from_ref="EisPerson", to_ref="EisDoc"))
     
-    # Legacy / Other (can add Period if needed later)
-    # rels.append(make_rel_schema("IncomeRecord_FOR_PERIOD_Period", "FOR_PERIOD", "IncomeRecord", "Period"))
-
+    # VehicleRegistration -> Vehicle
+    rels.append(make_rel_schema("VehicleRegistration_FOR_VEHICLE_Vehicle", "FOR_VEHICLE", "VehicleRegistration", "Vehicle", [], from_ref="VehReg", to_ref="Car"))
 
     for r in rels:
         coll.replace_one({"relationship_name": r["relationship_name"]}, r, upsert=True)
@@ -686,10 +880,7 @@ def init_registers(db: Database):
     erd_mappings.append(m("erd_vehicle", veh_scope, "$.Government_registration_number", "Vehicle", "registration_number", "ProxyVehicle", filter_rules=veh_filter))
     erd_mappings.append(m("erd_vehicle", veh_scope, "$.Serial_number", "Vehicle", "vin", "ProxyVehicle", filter_rules=veh_filter))
     erd_mappings.append(m("erd_vehicle", veh_scope, "$.Description", "Vehicle", "description", "ProxyVehicle", filter_rules=veh_filter))
-    erd_mappings.append(m("erd_vehicle_model", veh_scope, "$.Description", "Vehicle", "model", "ProxyVehicle",
-                          transform={"type": "regex", "pattern": r"моделі ([^,]+)", "group": 1}, filter_rules=veh_filter))
-    erd_mappings.append(m("erd_vehicle_year", veh_scope, "$.Description", "Vehicle", "year", "ProxyVehicle",
-                          transform={"type": "regex", "pattern": r"рік випуску (\d{4})", "group": 1}, filter_rules=veh_filter))
+    # Regex parsing for model/year removed as per requirement (ambiguous)
     erd_mappings.append(m("erd_vehicle", veh_scope, "$.Vht_id", "Vehicle", "vehicle_type", "ProxyVehicle", filter_rules=veh_filter))
     erd_mappings.append(m("erd_vehicle", veh_scope, "$.Property_type", "Vehicle", "property_type", "ProxyVehicle", filter_rules=veh_filter))
     erd_mappings.append(m("erd_vehicle_asset", veh_scope, "$.Vht_id", "Vehicle", "asset_type", "ProxyVehicle",
@@ -721,10 +912,7 @@ def init_registers(db: Database):
     erd_persons_mappings.append(m("erd_p_vehicle", persons_scope_veh, "$.Government_registration_number", "Vehicle", "registration_number", "ProxyVehicle", filter_rules=veh_filter))
     erd_persons_mappings.append(m("erd_p_vehicle", persons_scope_veh, "$.Serial_number", "Vehicle", "vin", "ProxyVehicle", filter_rules=veh_filter))
     erd_persons_mappings.append(m("erd_p_vehicle", persons_scope_veh, "$.Description", "Vehicle", "description", "ProxyVehicle", filter_rules=veh_filter))
-    erd_persons_mappings.append(m("erd_p_vehicle_model", persons_scope_veh, "$.Description", "Vehicle", "model", "ProxyVehicle",
-                          transform={"type": "regex", "pattern": r"моделі ([^,]+)", "group": 1}, filter_rules=veh_filter))
-    erd_persons_mappings.append(m("erd_p_vehicle_year", persons_scope_veh, "$.Description", "Vehicle", "year", "ProxyVehicle",
-                          transform={"type": "regex", "pattern": r"рік випуску (\d{4})", "group": 1}, filter_rules=veh_filter))
+    # Regex parsing for model/year removed as per requirement (ambiguous)
     erd_persons_mappings.append(m("erd_p_vehicle", persons_scope_veh, "$.Vht_id", "Vehicle", "vehicle_type", "ProxyVehicle", filter_rules=veh_filter))
     erd_persons_mappings.append(m("erd_p_vehicle", persons_scope_veh, "$.Property_type", "Vehicle", "property_type", "ProxyVehicle", filter_rules=veh_filter))
     erd_persons_mappings.append(m("erd_p_vehicle_asset", persons_scope_veh, "$.Vht_id", "Vehicle", "asset_type", "ProxyVehicle",
@@ -815,11 +1003,28 @@ def init_registers(db: Database):
     mvs_mappings.append(m("mvs_veh", mvs_scope, "$.MODEL_NAME", "Vehicle", "model", "Car"))
     mvs_mappings.append(m("mvs_veh", mvs_scope, "$.MAKE_YEAR", "Vehicle", "year", "Car", transform={"type": "to_int"})) 
     mvs_mappings.append(m("mvs_veh", mvs_scope, "$.COLOR_NAME", "Vehicle", "color", "Car"))
+    # Extended Vehicle Props
+    mvs_mappings.append(m("mvs_veh", mvs_scope, "$.BODY_NAME", "Vehicle", "body", "Car"))
+    mvs_mappings.append(m("mvs_veh", mvs_scope, "$.FUEL_NAME", "Vehicle", "fuel", "Car"))
+    mvs_mappings.append(m("mvs_veh", mvs_scope, "$.CAPACITY", "Vehicle", "capacity", "Car", transform={"type": "to_int"}))
+    mvs_mappings.append(m("mvs_veh", mvs_scope, "$.OWN_WEIGHT", "Vehicle", "weight", "Car", transform={"type": "to_int"}))
+    mvs_mappings.append(m("mvs_veh", mvs_scope, "$.N_ENGINE", "Vehicle", "engine_num", "Car"))
     
     # Owner
     mvs_mappings.append(m("mvs_owner", mvs_scope, "$.OWNER.CODE", "Person", "rnokpp", "Owner"))
     mvs_mappings.append(m("mvs_owner", mvs_scope, "$.OWNER.LNAME", "Person", "last_name", "Owner"))
     mvs_mappings.append(m("mvs_owner", mvs_scope, "$.OWNER.FNAME", "Person", "first_name", "Owner"))
+    mvs_mappings.append(m("mvs_owner", mvs_scope, "$.OWNER.PNAME", "Person", "middle_name", "Owner"))
+    mvs_mappings.append(m("mvs_owner", mvs_scope, "$.OWNER.BIRTHDAY", "Person", "birth_date", "Owner"))
+    mvs_mappings.append(m("mvs_owner", mvs_scope, "$.OWNER.PASSPORTSERIES", "Person", "passport_series", "Owner"))
+    mvs_mappings.append(m("mvs_owner", mvs_scope, "$.OWNER.PASSPORTNUMBER", "Person", "passport_number", "Owner"))
+
+    # Vehicle Registration
+    mvs_mappings.append(m("mvs_reg", mvs_scope, "$.DOC_ID", "VehicleRegistration", "registration_id", "VehReg"))
+    mvs_mappings.append(m("mvs_reg", mvs_scope, "$.OPERCODE", "VehicleRegistration", "opercode", "VehReg"))
+    mvs_mappings.append(m("mvs_reg", mvs_scope, "$.OPERNAME", "VehicleRegistration", "operation_name", "VehReg"))
+    mvs_mappings.append(m("mvs_reg", mvs_scope, "$.OPER_DATE", "VehicleRegistration", "registration_date", "VehReg"))
+    mvs_mappings.append(m("mvs_reg", mvs_scope, "$.DEP_REG_NAME", "VehicleRegistration", "dep_reg_name", "VehReg"))
     
     # Address
     # "ADDRESS_NAME": "м. ВІННИЦЯ, Вінницький р-н"
