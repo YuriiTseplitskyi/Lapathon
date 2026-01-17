@@ -1,8 +1,13 @@
-data/*
 .env
-*.pdf
-.DS_Store
+.venv/
 __pycache__/
+nabu_data/
+*.zip
+*.pdf
+.claude
+tmpclaude*
+CORRUPTION_AGENT_PHASE*
 *.json
+data/*
+.DS_Store
 *.ipynb
-
