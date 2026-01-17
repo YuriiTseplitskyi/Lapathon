@@ -21,7 +21,7 @@ CourtDecision: decision_id, court_id, case_id, reg_num, court_name, case_number,
 CivilEvent: event_id, response_id, date, registry_office, event_type, act_number  
 Identifier: identifier_id, identifier_value, identifier_type  
 
-## Зв’язки між вузлами
+## Relationships between nodes
 
 (Person)-[:HAS_IDENTIFIER]->(Identifier)  
 (Person)-[:HAS_ADDRESS {relationship_type}]->(Address)  
@@ -54,11 +54,6 @@ Identifier: identifier_id, identifier_value, identifier_type
 5. If the result of tool call is empty or point that there is error in query, rewrite the query and call the tool again.
 6. You may call the tool multiple times if needed to answer complex questions.
 7. Answer on question only if you have sufficient data from the tool results and fully sure about the answer.
-
-## Example
-
-User: "Find all people named John"
-You should call search_graph_db with: MATCH (p:Person) WHERE p.first_name = 'John' RETURN p.full_name AS name LIMIT 10
 """
 
 
@@ -84,7 +79,7 @@ CourtDecision: decision_id, court_id, case_id, reg_num, court_name, case_number,
 CivilEvent: event_id, response_id, date, registry_office, event_type, act_number  
 Identifier: identifier_id, identifier_value, identifier_type  
 
-## Зв’язки між вузлами
+## Relationships between nodes
 
 (Person)-[:HAS_IDENTIFIER]->(Identifier)  
 (Person)-[:HAS_ADDRESS {relationship_type}]->(Address)  
@@ -120,26 +115,8 @@ Build exhaustive family network including ALL relationship types:
 - **Address** - fields: address_id, region, city, street, house
 
 ## KEY GRAPH RELATIONSHIPS
-- (Person)-[:INVOLVED_IN {role}]->(CivilEvent) - roles: mother, father, child, bride, groom
+- (Person)-[:INVOLVED_IN]->(CivilEvent) - use to identify parent-child and spouse relationships
 - (Person)-[:HAS_ADDRESS]->(Address) - co-residence indicates family
-
-## RELATIONSHIP MAPPING
-
-| Relation | How to detect |
-|----------|---------------|
-| father | CivilEvent birth role='father' OR patronymic match |
-| mother | CivilEvent birth role='mother' |
-| spouse | CivilEvent marriage role='bride'/'groom' OR same-person surname change |
-| child | CivilEvent birth where target is mother/father |
-| sibling | Share same parent(s) in birth events |
-| grandfather/grandmother | Parent's parent (2-hop via birth events) |
-| grandson/granddaughter | Child's child (2-hop via birth events) |
-| uncle/aunt | Parent's sibling |
-| cousin | Parent's sibling's child |
-| nephew/niece | Sibling's child |
-| father-in-law/mother-in-law | Spouse's parent |
-| brother-in-law/sister-in-law | Spouse's sibling OR sibling's spouse |
-| son-in-law/daughter-in-law | Child's spouse |
 
 ## CONFIDENCE LEVELS
 
@@ -214,6 +191,10 @@ Example uncertain case:
   ]
 }
 ```
+
+## SURNAME VARIATION NOTE (Ukrainian names)
+- Male and female members of the same family often share the same surname root but with different endings (e.g., "-ий/-а", "-ий/-я", "-енко/-енко", "-ук/-юк", "-чук/-чук").
+- When inferring spouses, siblings, or in-laws, compare surname roots case-insensitively instead of requiring exact equality, and pair this with patronymic, birth date, and civil events for confidence.
 
 ## EXECUTION RULES
 1. Start with target person, then expand outward layer by layer
