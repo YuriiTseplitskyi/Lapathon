@@ -9,10 +9,11 @@ from typing_extensions import Annotated, TypedDict
 
 class CorruptionAgentState(TypedDict):
     """
-    State for the family-relationship-only agent.
+    State for the corruption detection agent.
 
-    This state is shared across the minimal graph:
+    This state is shared across the graph:
     - Family builder node populates family_relationships and person_ids
+    - Income/assets analyzer node populates income_assets_analysis
     """
     # Message history for agent reasoning
     messages: Annotated[List[AnyMessage], add_messages]
@@ -23,3 +24,6 @@ class CorruptionAgentState(TypedDict):
     # Family Builder Output
     family_relationships: Optional[Dict[str, Any]]  # Full family JSON structure
     person_ids: List[str]  # All family member IDs for easy querying
+
+    # Income vs Assets Analysis Output
+    income_assets_analysis: Optional[Dict[str, Any]]  # Gap analysis and risk scoring

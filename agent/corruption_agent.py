@@ -6,16 +6,16 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import END, START, StateGraph
 
 from agent.config import AgentConfig
-from agent.nodes import create_family_builder_node
+from agent.nodes import create_family_builder_node, create_income_assets_node
 from agent.state import CorruptionAgentState
 
 
 class CorruptionDetectionAgent:
     """
-    Minimal agent focused solely on building family relationships.
+    Corruption detection agent with family relationship discovery and income/assets analysis.
 
     Architecture:
-    START -> family_builder -> END
+    START -> family_builder -> income_assets_analyzer -> END
     """
 
     def __init__(self, cfg: AgentConfig):
@@ -30,40 +30,44 @@ class CorruptionDetectionAgent:
 
     def _build_graph(self):
         """
-        Build the LangGraph state machine for family relationship discovery.
+        Build the LangGraph state machine for corruption detection.
 
         Returns:
             Compiled LangGraph state machine.
         """
         builder = StateGraph(CorruptionAgentState)
 
-        # Create the single node
+        # Create nodes
         family_node = create_family_builder_node(self.cfg)
+        income_assets_node = create_income_assets_node(self.cfg)
 
         # Add nodes to graph
         builder.add_node("family_builder", family_node)
+        builder.add_node("income_assets_analyzer", income_assets_node)
 
         # Define sequential edges
         builder.add_edge(START, "family_builder")
-        builder.add_edge("family_builder", END)
+        builder.add_edge("family_builder", "income_assets_analyzer")
+        builder.add_edge("income_assets_analyzer", END)
 
         return builder.compile()
 
     def invoke(self, target_person_query: str) -> Dict[str, Any]:
         """
-        Run the family relationship discovery for a target person.
+        Run the corruption detection analysis for a target person.
 
         Args:
             target_person_query: Name, RNOKPP, or other identifier for the target person.
 
         Returns:
-            Dictionary containing the family relationships and person_ids.
+            Dictionary containing family relationships, income/assets analysis, and person_ids.
         """
         initial_state: CorruptionAgentState = {
-            "messages": [HumanMessage(content=f"Build family relationships for: {target_person_query}")],
+            "messages": [HumanMessage(content=f"Analyze corruption patterns for: {target_person_query}")],
             "target_person_query": target_person_query,
             "family_relationships": None,
             "person_ids": [],
+            "income_assets_analysis": None,
         }
 
         result = self.graph.invoke(initial_state)

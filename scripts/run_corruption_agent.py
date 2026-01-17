@@ -41,7 +41,7 @@ def main() -> None:
     args = parser.parse_args()
 
     print("=" * 60)
-    print("FAMILY RELATIONSHIP AGENT")
+    print("CORRUPTION DETECTION AGENT")
     print("=" * 60)
     print(f"Target: {args.target}")
     print("=" * 60)
@@ -54,15 +54,17 @@ def main() -> None:
     print(agent.get_graph_visualization())
     print()
 
-    print("Starting family relationship discovery...")
+    print("Starting corruption detection analysis...")
     print("-" * 40)
 
+    result = agent.invoke(args.target)
+
     if args.verbose:
-        result = agent.invoke(args.target)
         output = {
             "target_person_query": result.get("target_person_query"),
             "family_relationships": result.get("family_relationships"),
             "person_ids": result.get("person_ids"),
+            "income_assets_analysis": result.get("income_assets_analysis"),
             # Serialize messages to plain text to keep JSON output safe
             "messages": [
                 getattr(m, "content", str(m)) if m is not None else None
@@ -70,7 +72,12 @@ def main() -> None:
             ],
         }
     else:
-        output = agent.get_family_data(args.target)
+        output = {
+            "target_person_query": result.get("target_person_query"),
+            "family_relationships": result.get("family_relationships"),
+            "person_ids": result.get("person_ids"),
+            "income_assets_analysis": result.get("income_assets_analysis"),
+        }
 
     output_json = json.dumps(output, ensure_ascii=False, indent=2)
 
@@ -86,6 +93,8 @@ def main() -> None:
     if isinstance(output, dict):
         family = output.get("family_relationships", {})
         persons = output.get("person_ids", [])
+        income_assets = output.get("income_assets_analysis", {})
+
         print()
         print("=" * 60)
         print("SUMMARY")
@@ -94,6 +103,16 @@ def main() -> None:
         if isinstance(family, dict) and family.get("target_person"):
             print(f"Target person ID: {family.get('target_person', {}).get('person_id', 'N/A')}")
             print(f"Target name: {family.get('target_person', {}).get('full_name', 'N/A')}")
+
+        # Show income/assets summary
+        if isinstance(income_assets, dict) and income_assets.get("risk_level"):
+            print()
+            print("INCOME VS ASSETS ANALYSIS:")
+            print(f"  Risk Level: {income_assets.get('risk_level', 'N/A')}")
+            if income_assets.get("summary"):
+                print(f"  Summary: {income_assets.get('summary')}")
+            if income_assets.get("income_assets_ratio"):
+                print(f"  Assets/Income Ratio: {income_assets.get('income_assets_ratio')}x")
 
 
 if __name__ == "__main__":

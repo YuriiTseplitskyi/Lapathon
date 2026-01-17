@@ -33,21 +33,38 @@ def extract_family_json(messages: list) -> Dict[str, Any]:
             if not isinstance(content, str):
                 continue
 
-            # Try to find JSON in code blocks first
-            json_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", content)
-            if json_match:
+            # Try to find JSON in markdown code block first
+            json_block_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
+            if json_block_match:
                 try:
-                    return json.loads(json_match.group(1))
-                except json.JSONDecodeError:
+                    return json.loads(json_block_match.group(1))
+                except json.JSONDecodeError as e:
+                    print(f"Warning: Found JSON block but failed to parse: {e}")
                     pass
 
-            # Try to find raw JSON object
-            json_match = re.search(r"(\{[\s\S]*\"target_person\"[\s\S]*\})", content)
-            if json_match:
-                try:
-                    return json.loads(json_match.group(1))
-                except json.JSONDecodeError:
-                    pass
+            # Try to find standalone JSON object (look for balanced braces)
+            # This will find the first complete JSON object in the text
+            brace_count = 0
+            start_idx = None
+            for i, char in enumerate(content):
+                if char == '{':
+                    if start_idx is None:
+                        start_idx = i
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                    if brace_count == 0 and start_idx is not None:
+                        # Found a complete JSON object
+                        json_str = content[start_idx:i+1]
+                        try:
+                            parsed = json.loads(json_str)
+                            # Validate it looks like a family relationships object
+                            if isinstance(parsed, dict) and ("target_person" in parsed or "immediate_family" in parsed):
+                                return parsed
+                        except json.JSONDecodeError:
+                            # Reset and try to find another object
+                            start_idx = None
+                            brace_count = 0
 
     # Return empty structure if no valid JSON found
     return {

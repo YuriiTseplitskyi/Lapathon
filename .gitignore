@@ -7,3 +7,4 @@ nabu_data/
 .claude
 tmpclaude*
 CORRUPTION_AGENT_PHASE*
+*.json
