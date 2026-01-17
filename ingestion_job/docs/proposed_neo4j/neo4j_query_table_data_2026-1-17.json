@@ -1,0 +1,4008 @@
+[
+  {
+    "startLabel": "AppByItnRequest",
+    "startProperties": [
+      "id",
+      "Reason",
+      "UserDescription",
+      "Format",
+      "Itn"
+    ],
+    "relType": "REQUESTS_PERSON_INFO",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "AppByItnRequest",
+    "startProperties": [
+      "id",
+      "Name",
+      "Patronymic",
+      "Surname",
+      "Reason",
+      "UserDescription",
+      "Format",
+      "Itn"
+    ],
+    "relType": "USES_SERVICE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "ArBirthServiceRequest",
+    "startProperties": [
+      "id",
+      "ChildBirthDate",
+      "ChildSurname",
+      "ChildName",
+      "ChildPatronymic"
+    ],
+    "relType": "ABOUT_PERSON",
+    "relProperties": [
+
+    ],
+    "endLabel": "PersonName",
+    "endProperties": [
+      "id",
+      "name",
+      "full_name",
+      "surname",
+      "patronymic"
+    ]
+  },
+  {
+    "startLabel": "ArMarriageDivorceServiceRequest",
+    "startProperties": [
+      "id",
+      "WifeBirthDate",
+      "WifeSurname",
+      "WifeName",
+      "WifePatronymic"
+    ],
+    "relType": "REQUESTED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "PersonName",
+    "endProperties": [
+      "id",
+      "name",
+      "last_name",
+      "role",
+      "middle_name",
+      "full_name",
+      "first_name",
+      "date_birth",
+      "surname",
+      "patronymic"
+    ]
+  },
+  {
+    "startLabel": "ArMarriageDivorceServiceRequest",
+    "startProperties": [
+      "id",
+      "WifeBirthDate",
+      "WifeSurname",
+      "WifeName",
+      "WifePatronymic"
+    ],
+    "relType": "REQUESTED_VIA",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "ArMarriageDivorceServiceRequest",
+    "startProperties": [
+      "id",
+      "WifeBirthDate",
+      "WifeSurname",
+      "WifeName",
+      "WifePatronymic",
+      "id",
+      "HusbandSurname",
+      "HusbandBirthDate",
+      "HusbandName",
+      "HusbandPatronymic"
+    ],
+    "relType": "USES_SERVICE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "BirthAct",
+    "startProperties": [
+      "id",
+      "ActNumber",
+      "ActDate",
+      "Registrar"
+    ],
+    "relType": "HAS_CERTIFICATE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Certificate",
+    "endProperties": [
+      "id",
+      "Number",
+      "Series",
+      "IssueDate"
+    ]
+  },
+  {
+    "startLabel": "BirthAct",
+    "startProperties": [
+      "id",
+      "ActNumber",
+      "ActDate",
+      "Registrar"
+    ],
+    "relType": "HAS_CHILD",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "role",
+      "BirthPlace",
+      "FirstName",
+      "Citizenship",
+      "LastName",
+      "Gender",
+      "MiddleName",
+      "BirthDate"
+    ]
+  },
+  {
+    "startLabel": "BirthAct",
+    "startProperties": [
+      "id",
+      "ActNumber",
+      "ActDate",
+      "Registrar"
+    ],
+    "relType": "HAS_FATHER",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "role",
+      "FirstName",
+      "Citizenship",
+      "LastName",
+      "MiddleName"
+    ]
+  },
+  {
+    "startLabel": "BirthAct",
+    "startProperties": [
+      "id",
+      "ActNumber",
+      "ActDate",
+      "Registrar"
+    ],
+    "relType": "HAS_MOTHER",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "role",
+      "FirstName",
+      "Citizenship",
+      "LastName",
+      "MiddleName"
+    ]
+  },
+  {
+    "startLabel": "BirthAct",
+    "startProperties": [
+      "id",
+      "ActNumber",
+      "ActDate",
+      "Registrar"
+    ],
+    "relType": "REGISTERED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "ExecutorRNOKPP",
+      "ExecutorEDRPOUcode",
+      "ExecutorFullName",
+      "tax_agent_code",
+      "executor_full_name",
+      "executor_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "Certificate",
+    "startProperties": [
+      "id",
+      "number",
+      "issue_date",
+      "series"
+    ],
+    "relType": "ISSUED_FOR",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "gender",
+      "birth_date",
+      "citizenship",
+      "last_name",
+      "birth_place",
+      "role",
+      "middle_name",
+      "first_name"
+    ]
+  },
+  {
+    "startLabel": "Certificate",
+    "startProperties": [
+      "id",
+      "name",
+      "status",
+      "date",
+      "Number",
+      "Series",
+      "surname",
+      "patronymic",
+      "org",
+      "repeat"
+    ],
+    "relType": "ISSUED_TO",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service",
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "role",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "EARNED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "INCLUDED_IN",
+    "relProperties": [
+
+    ],
+    "endLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "endProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "INCOME_FOR",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "INCOME_FROM",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "INCOME_OF",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "INCOME_REPORTED",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "INCOME_REPORTED_IN",
+    "relProperties": [
+
+    ],
+    "endLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "endProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "INCOME_TO",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "PAID_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "PROVIDED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "PROVIDED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "SignOfIncomePrivilege",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "SignOfIncomePrivilege",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "RECEIVED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "RECEIVED_FROM",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "date_of_employment",
+      "person_rnokpp",
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "REPORTED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "REPORTED_IN",
+    "relProperties": [
+
+    ],
+    "endLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "endProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ]
+  },
+  {
+    "startLabel": "IncomeRecord",
+    "startProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp"
+    ],
+    "relType": "TAX_AGENT",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "ABOUT_PERSON",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result",
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate"
+    ],
+    "relType": "ANSWERED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode",
+      "id",
+      "role",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode",
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "ANSWER_OF",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "ANSWER_TO",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "COVERS_PERIOD",
+    "relProperties": [
+
+    ],
+    "endLabel": "Period",
+    "endProperties": [
+      "id",
+      "period_end_year",
+      "period_begin_year",
+      "period_begin_month",
+      "period_end_month"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "EXECUTED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "role",
+      "full_name",
+      "ExecutorFullName",
+      "edrpou",
+      "edrpou_code"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "EXECUTED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "ExecutorRNOKPP",
+      "ExecutorEDRPOUcode",
+      "ExecutorFullName",
+      "tax_agent_code",
+      "executor_full_name",
+      "executor_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "EXECUTED_BY_ORG",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "ExecutorRNOKPP",
+      "ExecutorEDRPOUcode",
+      "ExecutorFullName",
+      "tax_agent_code",
+      "executor_full_name",
+      "executor_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "EXECUTED_BY_PERSON",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "role",
+      "full_name",
+      "ExecutorFullName",
+      "edrpou",
+      "edrpou_code"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "EXECUTOR_ORG",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "ExecutorRNOKPP",
+      "ExecutorEDRPOUcode",
+      "ExecutorFullName",
+      "tax_agent_code",
+      "executor_full_name",
+      "executor_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "HAS_EXECUTOR",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "role",
+      "full_name",
+      "ExecutorFullName",
+      "edrpou",
+      "edrpou_code"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result",
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate"
+    ],
+    "relType": "HAS_INCOME_RECORD",
+    "relProperties": [
+
+    ],
+    "endLabel": "IncomeRecord",
+    "endProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result",
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate"
+    ],
+    "relType": "HAS_INCOME_SOURCE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "HAS_INFO",
+    "relProperties": [
+      "result"
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "HAS_ORGANIZATION",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result",
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate"
+    ],
+    "relType": "HAS_PERSON",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate"
+    ],
+    "relType": "HAS_RESPONSE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "HAS_RESULT_FOR",
+    "relProperties": [
+      "result"
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result",
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "HAS_SUBJECT",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "INCOME_RESPONSE_RECORD",
+    "relProperties": [
+
+    ],
+    "endLabel": "IncomeRecord",
+    "endProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "PROVIDED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode",
+      "serviceVersion"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate"
+    ],
+    "relType": "REPORTED_BY_SERVICE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result",
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "REQUESTED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "role",
+      "full_name",
+      "ExecutorFullName",
+      "edrpou",
+      "edrpou_code",
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "REQUESTED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "role",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "REQUESTED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "ExecutorRNOKPP",
+      "ExecutorEDRPOUcode",
+      "ExecutorFullName",
+      "tax_agent_code",
+      "executor_full_name",
+      "executor_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "REQUESTED_BY_ORG",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "ExecutorRNOKPP",
+      "ExecutorEDRPOUcode",
+      "ExecutorFullName",
+      "tax_agent_code",
+      "executor_full_name",
+      "executor_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "REQUESTED_FOR",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "REQUESTED_PERIOD",
+    "relProperties": [
+
+    ],
+    "endLabel": "Period",
+    "endProperties": [
+      "id",
+      "period_end_year",
+      "period_begin_year",
+      "period_begin_month",
+      "period_end_month"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "REQUESTED_PERSON",
+    "relProperties": [
+
+    ],
+    "endLabel": "PersonName",
+    "endProperties": [
+      "id",
+      "name",
+      "last_name",
+      "role",
+      "middle_name",
+      "full_name",
+      "first_name",
+      "date_birth",
+      "surname",
+      "patronymic"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "REQUESTED_PERSON",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "REQUESTED_VIA",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "RESPONSE_FOR",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "RESPONSE_FOR_SERVICE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "RESPONSE_OF",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "RESPONSE_TO",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ],
+    "relType": "SENT_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "role",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "SENT_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "ExecutorRNOKPP",
+      "ExecutorEDRPOUcode",
+      "ExecutorFullName",
+      "tax_agent_code",
+      "executor_full_name",
+      "executor_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result",
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "SUBJECT",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "SUBJECT_PERSON",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result",
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate"
+    ],
+    "relType": "SUBMITTED_FOR",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "startProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result",
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "id",
+      "IDrequest",
+      "basis_request"
+    ],
+    "relType": "USES_SERVICE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode",
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "MarriageRecord",
+    "startProperties": [
+      "id",
+      "OpName",
+      "OpDate",
+      "ComposeDate",
+      "ArRegNumber",
+      "ArRegDate",
+      "RegNum",
+      "ComposeOrg"
+    ],
+    "relType": "MARRIAGE_CERTIFICATE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Certificate",
+    "endProperties": [
+      "id",
+      "name",
+      "status",
+      "date",
+      "Number",
+      "Series",
+      "surname",
+      "patronymic",
+      "org",
+      "repeat"
+    ]
+  },
+  {
+    "startLabel": "MarriageRecord",
+    "startProperties": [
+      "id",
+      "OpName",
+      "OpDate",
+      "ComposeDate",
+      "ArRegNumber",
+      "ArRegDate",
+      "RegNum",
+      "ComposeOrg"
+    ],
+    "relType": "MARRIAGE_HUSBAND",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "MarriageRecord",
+    "startProperties": [
+      "id",
+      "OpName",
+      "OpDate",
+      "ComposeDate",
+      "ArRegNumber",
+      "ArRegDate",
+      "RegNum",
+      "ComposeOrg"
+    ],
+    "relType": "MARRIAGE_WIFE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "role",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "NotarialBlank",
+    "startProperties": [
+      "id",
+      "number",
+      "serial"
+    ],
+    "relType": "ASSOCIATED_BLANK",
+    "relProperties": [
+
+    ],
+    "endLabel": "PowerOfAttorney",
+    "endProperties": [
+      "id",
+      "finished_date",
+      "notarial_acts_reg_number",
+      "witness_name",
+      "attested_data"
+    ]
+  },
+  {
+    "startLabel": "NotarialBlank",
+    "startProperties": [
+      "id",
+      "number",
+      "serial"
+    ],
+    "relType": "ASSOCIATED_WITH",
+    "relProperties": [
+
+    ],
+    "endLabel": "PowerOfAttorney",
+    "endProperties": [
+      "id",
+      "finished_date",
+      "notarial_acts_reg_number",
+      "witness_name",
+      "attested_data"
+    ]
+  },
+  {
+    "startLabel": "Organization",
+    "startProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "ExecutorRNOKPP",
+      "ExecutorEDRPOUcode",
+      "ExecutorFullName",
+      "tax_agent_code",
+      "executor_full_name",
+      "executor_rnokpp"
+    ],
+    "relType": "EXECUTOR_PERSON",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "role",
+      "full_name",
+      "ExecutorFullName",
+      "edrpou",
+      "edrpou_code"
+    ]
+  },
+  {
+    "startLabel": "Organization",
+    "startProperties": [
+      "id",
+      "name"
+    ],
+    "relType": "FOUNDER_OF",
+    "relProperties": [
+      "role",
+      "capital"
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "state",
+      "religion",
+      "state_text",
+      "object_name",
+      "olf_code",
+      "olf_name",
+      "tax_agent_code",
+      "termination",
+      "names",
+      "activity_kinds",
+      "subject_id"
+    ]
+  },
+  {
+    "startLabel": "Organization",
+    "startProperties": [
+      "id",
+      "name",
+      "role",
+      "is_legal_person",
+      "tax_agent_code"
+    ],
+    "relType": "GRANTOR_OF",
+    "relProperties": [
+
+    ],
+    "endLabel": "PowerOfAttorney",
+    "endProperties": [
+      "id",
+      "finished_date",
+      "notarial_acts_reg_number",
+      "witness_name",
+      "attested_data"
+    ]
+  },
+  {
+    "startLabel": "Organization",
+    "startProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "tax_agent_code"
+    ],
+    "relType": "PROVIDES_SERVICE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "Organization",
+    "startProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ],
+    "relType": "REPORTED_INCOME",
+    "relProperties": [
+
+    ],
+    "endLabel": "IncomeRecord",
+    "endProperties": [
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "Organization",
+    "startProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ],
+    "relType": "TAX_AGENT_FOR",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ]
+  },
+  {
+    "startLabel": "Organization",
+    "startProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "ExecutorRNOKPP",
+      "ExecutorEDRPOUcode",
+      "ExecutorFullName",
+      "tax_agent_code",
+      "executor_full_name",
+      "executor_rnokpp"
+    ],
+    "relType": "USES_SERVICE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "Package",
+    "startProperties": [
+      "id",
+      "date",
+      "author"
+    ],
+    "relType": "CONTAINS",
+    "relProperties": [
+
+    ],
+    "endLabel": "Request",
+    "endProperties": [
+      "id",
+      "name",
+      "test_id",
+      "id",
+      "name",
+      "test_id",
+      "ID"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "role",
+      "full_name",
+      "ExecutorFullName",
+      "edrpou",
+      "edrpou_code"
+    ],
+    "relType": "EXECUTOR_EMPLOYED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "ExecutorRNOKPP",
+      "ExecutorEDRPOUcode",
+      "ExecutorFullName",
+      "tax_agent_code",
+      "executor_full_name",
+      "executor_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "role",
+      "full_name",
+      "ExecutorFullName",
+      "edrpou",
+      "edrpou_code"
+    ],
+    "relType": "EXECUTOR_ORG",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "ExecutorRNOKPP",
+      "ExecutorEDRPOUcode",
+      "ExecutorFullName",
+      "tax_agent_code",
+      "executor_full_name",
+      "executor_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name"
+    ],
+    "relType": "FATHER_OF",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "gender",
+      "birth_date",
+      "citizenship",
+      "last_name",
+      "birth_place",
+      "role",
+      "middle_name",
+      "first_name"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "address"
+    ],
+    "relType": "FOUNDER_OF",
+    "relProperties": [
+      "role",
+      "capital"
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "state",
+      "religion",
+      "state_text",
+      "object_name",
+      "olf_code",
+      "olf_name",
+      "tax_agent_code",
+      "termination",
+      "names",
+      "activity_kinds",
+      "subject_id",
+      "id",
+      "state",
+      "religion",
+      "state_text",
+      "object_name",
+      "olf_code",
+      "olf_name",
+      "tax_agent_code",
+      "names",
+      "activity_kinds",
+      "authorised_capital",
+      "registration",
+      "subject_id"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth"
+    ],
+    "relType": "GRANTOR_OF",
+    "relProperties": [
+
+    ],
+    "endLabel": "PowerOfAttorney",
+    "endProperties": [
+      "id",
+      "finished_date",
+      "notarial_acts_reg_number",
+      "witness_name",
+      "attested_data"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth"
+    ],
+    "relType": "GRANTOR_OF",
+    "relProperties": [
+
+    ],
+    "endLabel": "Property",
+    "endProperties": [
+      "id",
+      "description",
+      "vht_id",
+      "government_registration_number",
+      "property_type",
+      "serial_number",
+      "id",
+      "description",
+      "address",
+      "vht_id",
+      "property_type"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "rnokpp"
+    ],
+    "relType": "HAS_INCOME",
+    "relProperties": [
+
+    ],
+    "endLabel": "IncomeRecord",
+    "endProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth"
+    ],
+    "relType": "HAS_INCOME_RECORD",
+    "relProperties": [
+
+    ],
+    "endLabel": "IncomeRecord",
+    "endProperties": [
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "tax_transferred",
+      "income_accrued",
+      "income_paid",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "date_of_employment",
+      "person_rnokpp",
+      "id",
+      "income_accrued",
+      "tax_charged",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "income_accrued",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "sign_of_income_privilege",
+      "tax_agent_code",
+      "person_rnokpp",
+      "id",
+      "SignOfIncomePrivilege",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ],
+    "relType": "HAS_INCOME_SOURCE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth"
+    ],
+    "relType": "HAS_NOTARIAL_BLANK",
+    "relProperties": [
+
+    ],
+    "endLabel": "NotarialBlank",
+    "endProperties": [
+      "id",
+      "number",
+      "serial"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth"
+    ],
+    "relType": "HAS_POWER_OF_ATTORNEY",
+    "relProperties": [
+
+    ],
+    "endLabel": "PowerOfAttorney",
+    "endProperties": [
+      "id",
+      "finished_date",
+      "notarial_acts_reg_number",
+      "witness_name",
+      "attested_data"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ],
+    "relType": "HAS_RESPONSE",
+    "relProperties": [
+
+    ],
+    "endLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "endProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth"
+    ],
+    "relType": "HEAD_OF",
+    "relProperties": [
+      "role"
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "state",
+      "religion",
+      "state_text",
+      "object_name",
+      "olf_code",
+      "olf_name",
+      "tax_agent_code",
+      "names",
+      "activity_kinds",
+      "authorised_capital",
+      "registration",
+      "subject_id"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ],
+    "relType": "INCOME_FROM",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ],
+    "relType": "INCOME_REPORTED",
+    "relProperties": [
+
+    ],
+    "endLabel": "IncomeRecord",
+    "endProperties": [
+      "id",
+      "SignOfIncomePrivilege",
+      "IncomePaid",
+      "TaxTransferred",
+      "period_quarter_month",
+      "period_year",
+      "result_income",
+      "IncomeAccrued",
+      "TaxCharged",
+      "tax_agent_code",
+      "person_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ],
+    "relType": "INCOME_SOURCE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name"
+    ],
+    "relType": "MOTHER_OF",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "gender",
+      "birth_date",
+      "citizenship",
+      "last_name",
+      "birth_place",
+      "role",
+      "middle_name",
+      "first_name"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ],
+    "relType": "RECEIVED_INCOME_FROM",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "name",
+      "tax_agent_code"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "gender",
+      "birth_date",
+      "citizenship",
+      "last_name",
+      "birth_place",
+      "role",
+      "middle_name",
+      "first_name"
+    ],
+    "relType": "RECORDED_IN",
+    "relProperties": [
+
+    ],
+    "endLabel": "BirthAct",
+    "endProperties": [
+      "id",
+      "ActNumber",
+      "ActDate",
+      "Registrar"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ],
+    "relType": "REPRESENTATIVE_OF",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "name",
+      "rnokpp",
+      "role",
+      "is_legal_person"
+    ],
+    "relType": "REPRESENTATIVE_OF",
+    "relProperties": [
+
+    ],
+    "endLabel": "PowerOfAttorney",
+    "endProperties": [
+      "id",
+      "finished_date",
+      "notarial_acts_reg_number",
+      "witness_name",
+      "attested_data"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "rnokpp",
+      "role"
+    ],
+    "relType": "REQUESTED",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service",
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "address",
+      "is_legal_person",
+      "date_birth",
+      "id",
+      "rnokpp"
+    ],
+    "relType": "SUBJECT_OF",
+    "relProperties": [
+
+    ],
+    "endLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "endProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result",
+      "id",
+      "IDrequest",
+      "basis_request"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "citizenship",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "family_status",
+      "date_of_birth",
+      "military_service"
+    ],
+    "relType": "SUBJECT_OF_REQUEST",
+    "relProperties": [
+
+    ],
+    "endLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "endProperties": [
+      "id",
+      "IDrequest",
+      "basis_request"
+    ]
+  },
+  {
+    "startLabel": "Person",
+    "startProperties": [
+      "id",
+      "rnokpp",
+      "role"
+    ],
+    "relType": "USES_SUBSYSTEM",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "role",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "PowerOfAttorney",
+    "startProperties": [
+      "id",
+      "finished_date",
+      "notarial_acts_reg_number",
+      "witness_name",
+      "attested_data"
+    ],
+    "relType": "COVERS_PROPERTY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Property",
+    "endProperties": [
+      "id",
+      "description",
+      "address",
+      "vht_id",
+      "property_type",
+      "id",
+      "description",
+      "vht_id",
+      "government_registration_number",
+      "property_type",
+      "serial_number"
+    ]
+  },
+  {
+    "startLabel": "Request",
+    "startProperties": [
+      "id",
+      "protocolVersion",
+      "userId",
+      "ID"
+    ],
+    "relType": "INITIATED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "role",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "Request",
+    "startProperties": [
+      "id",
+      "protocolVersion",
+      "userId",
+      "ID"
+    ],
+    "relType": "INITIATED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "AppByItnRequest",
+    "endProperties": [
+      "id",
+      "Reason",
+      "UserDescription",
+      "Format",
+      "Itn"
+    ]
+  },
+  {
+    "startLabel": "Request",
+    "startProperties": [
+      "id",
+      "Search_code",
+      "Search_nam",
+      "ID"
+    ],
+    "relType": "REQUESTED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "Request",
+    "startProperties": [
+      "id",
+      "name",
+      "test_id",
+      "ID"
+    ],
+    "relType": "REQUESTED_FOR",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "Request",
+    "startProperties": [
+      "id",
+      "Search_code",
+      "Search_nam",
+      "ID"
+    ],
+    "relType": "REQUESTED_VIA",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "Request",
+    "startProperties": [
+      "id",
+      "protocolVersion",
+      "userId",
+      "ID"
+    ],
+    "relType": "REQUESTS",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "Request",
+    "startProperties": [
+      "id",
+      "protocolVersion",
+      "userId",
+      "ID"
+    ],
+    "relType": "REQUESTS_FOR",
+    "relProperties": [
+
+    ],
+    "endLabel": "Person",
+    "endProperties": [
+      "id",
+      "name",
+      "rnokpp",
+      "last_name",
+      "role",
+      "middle_name",
+      "first_name",
+      "is_legal_person",
+      "date_birth"
+    ]
+  },
+  {
+    "startLabel": "Request",
+    "startProperties": [
+      "id",
+      "Search_code",
+      "Search_nam",
+      "ID"
+    ],
+    "relType": "SEARCHED_PERSON",
+    "relProperties": [
+
+    ],
+    "endLabel": "PersonName",
+    "endProperties": [
+      "id",
+      "name",
+      "last_name",
+      "role",
+      "middle_name",
+      "full_name",
+      "first_name",
+      "date_birth",
+      "surname",
+      "patronymic"
+    ]
+  },
+  {
+    "startLabel": "Request",
+    "startProperties": [
+      "id",
+      "Search_code",
+      "Search_nam",
+      "ID"
+    ],
+    "relType": "SEARCHES_FOR",
+    "relProperties": [
+
+    ],
+    "endLabel": "PersonName",
+    "endProperties": [
+      "id",
+      "name",
+      "last_name",
+      "role",
+      "middle_name",
+      "full_name",
+      "first_name",
+      "date_birth",
+      "surname",
+      "patronymic",
+      "id",
+      "full_name"
+    ]
+  },
+  {
+    "startLabel": "Request",
+    "startProperties": [
+      "id",
+      "Search_code",
+      "Search_nam",
+      "ID",
+      "id",
+      "protocolVersion",
+      "userId",
+      "ID",
+      "id",
+      "name",
+      "test_id",
+      "ID"
+    ],
+    "relType": "USES_SERVICE",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode",
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode",
+      "serviceVersion"
+    ]
+  },
+  {
+    "startLabel": "Service",
+    "startProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode",
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode"
+    ],
+    "relType": "HAS_RESPONSE",
+    "relProperties": [
+
+    ],
+    "endLabel": "InfoIncomeSourcesDRFO2AnswerResponse",
+    "endProperties": [
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "id",
+      "error",
+      "applicationNumber",
+      "IDrequest",
+      "applicationDate",
+      "result",
+      "person_rnokpp",
+      "Result"
+    ]
+  },
+  {
+    "startLabel": "Service",
+    "startProperties": [
+      "id",
+      "role",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode"
+    ],
+    "relType": "INITIATES",
+    "relProperties": [
+
+    ],
+    "endLabel": "Request",
+    "endProperties": [
+      "id",
+      "Search_code",
+      "Search_nam",
+      "ID"
+    ]
+  },
+  {
+    "startLabel": "Service",
+    "startProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ],
+    "relType": "REQUESTED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "role",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "Service",
+    "startProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ],
+    "relType": "REQUESTED_BY",
+    "relProperties": [
+
+    ],
+    "endLabel": "Organization",
+    "endProperties": [
+      "id",
+      "role",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "ExecutorRNOKPP",
+      "ExecutorEDRPOUcode",
+      "ExecutorFullName",
+      "tax_agent_code",
+      "executor_full_name",
+      "executor_rnokpp"
+    ]
+  },
+  {
+    "startLabel": "Service",
+    "startProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ],
+    "relType": "REQUESTED_PERSON",
+    "relProperties": [
+
+    ],
+    "endLabel": "PersonName",
+    "endProperties": [
+      "id",
+      "name",
+      "last_name",
+      "role",
+      "middle_name",
+      "full_name",
+      "first_name",
+      "date_birth",
+      "surname",
+      "patronymic"
+    ]
+  },
+  {
+    "startLabel": "Service",
+    "startProperties": [
+      "id",
+      "role",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "objectType",
+      "serviceCode"
+    ],
+    "relType": "REQUESTS",
+    "relProperties": [
+
+    ],
+    "endLabel": "Service",
+    "endProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ]
+  },
+  {
+    "startLabel": "Service",
+    "startProperties": [
+      "id",
+      "memberCode",
+      "xRoadInstance",
+      "memberClass",
+      "subsystemCode",
+      "serviceCode"
+    ],
+    "relType": "REQUESTS",
+    "relProperties": [
+
+    ],
+    "endLabel": "ArBirthServiceRequest",
+    "endProperties": [
+      "id",
+      "ChildBirthDate",
+      "ChildSurname",
+      "ChildName",
+      "ChildPatronymic"
+    ]
+  }
+]

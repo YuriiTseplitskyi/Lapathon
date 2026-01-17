@@ -159,6 +159,18 @@ def init_entities(db):
         ],
         [{"properties": ["act_number"], "when": {"exists": ["act_number"]}}]
     ))
+
+    # 3b. BirthCertificate
+    entities.append(make_entity_schema(
+        "BirthCertificate",
+        [
+            ("series", "Series of the certificate."),
+            ("number", "Number of the certificate."),
+            ("issue_date", "Date when the certificate was issued."),
+            ("certificate_id", "Unique internal identifier.")
+        ],
+        [{"properties": ["series", "number"], "when": {"exists": ["series", "number"]}}]
+    ))
     
     # 4. CourtCase
     entities.append(make_entity_schema(
@@ -529,6 +541,28 @@ def init_relationships(db):
     # VehicleRegistration -> Vehicle
     rels.append(make_rel_schema("VehicleRegistration_FOR_VEHICLE_Vehicle", "FOR_VEHICLE", "VehicleRegistration", "Vehicle", [], from_ref="VehReg", to_ref="Car"))
 
+    # Service Relationships
+    rels.append(make_rel_schema("Request_USED_SERVICE_Service", "USED_SERVICE", "Request", "Service", [], from_ref="Req", to_ref="Svc"))
+
+    # PowerOfAttorney Relationships
+    rels.append(make_rel_schema("Person_GRANTED_PowerOfAttorney", "GRANTED", "Person", "PowerOfAttorney", [], from_ref="Grantor", to_ref="PoA"))
+    rels.append(make_rel_schema("Person_REPRESENTATIVE_IN_PowerOfAttorney", "REPRESENTATIVE_IN", "Person", "PowerOfAttorney", [], from_ref="Rep", to_ref="PoA"))
+    rels.append(make_rel_schema("PowerOfAttorney_COVERS_VEHICLE_Vehicle", "COVERS_VEHICLE", "PowerOfAttorney", "Vehicle", [], from_ref="PoA", to_ref="Car"))
+    rels.append(make_rel_schema("PowerOfAttorney_USES_BLANK_NotarialBlank", "USES_BLANK", "PowerOfAttorney", "NotarialBlank", [], from_ref="PoA", to_ref="Blank"))
+    
+    # Document Consolidation (Certificate)
+    rels.append(make_rel_schema("Person_HAS_DOCUMENT_Document", "HAS_DOCUMENT", "Person", "Document", [], from_ref="Person", to_ref="Doc"))
+    
+    # Birth Certificate Relationships
+    rels.append(make_rel_schema("Person_HAS_CERTIFICATE_BirthCertificate", "HAS_CERTIFICATE", "Person", "BirthCertificate", [], from_ref="Child", to_ref="BirthCert"))
+    
+    # Parent relationships (inferred from BirthAct)
+    rels.append(make_rel_schema("Person_PARENT_OF_Person", "PARENT_OF", "Person", "Person", [], from_ref="Mother", to_ref="Child"))
+    rels.append(make_rel_schema("Person_PARENT_OF_Person_Father", "PARENT_OF", "Person", "Person", [], from_ref="Father", to_ref="Child"))
+    
+    rels.append(make_rel_schema("Person_HAS_DOCUMENT_Birth", "HAS_DOCUMENT", "Person", "BirthCertificate", [], from_ref="Child", to_ref="BirthCert"))
+
+
     for r in rels:
         coll.replace_one({"relationship_name": r["relationship_name"]}, r, upsert=True)
     
@@ -689,21 +723,26 @@ def init_registers(db: Database):
     # ==========================================
     drfo_variants = []
     drfo_mappings = []
-    inc_scope = "$.data.Envelope.Body.InfoIncomeSourcesDRFO2AnswerResponse.SourcesOfIncome[*]"
     
-    # Income Node - ALL FIELDS from Опис_полів.xlsx
-    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.IncomeAccrued", "IncomeRecord", "income_accrued", "IncRec"))
-    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.IncomePaid", "IncomeRecord", "income_paid", "IncRec"))
-    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.TaxCharged", "IncomeRecord", "tax_charged", "IncRec"))
-    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.TaxTransferred", "IncomeRecord", "tax_transferred", "IncRec"))
-    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.period_year", "IncomeRecord", "year", "IncRec"))
-    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.period_quarter_month", "IncomeRecord", "period", "IncRec"))
-    drfo_mappings.append(m("inc_rec", inc_scope, "$.IncomeTaxes.SignOfIncomePrivilege", "IncomeRecord", "income_type_code", "IncRec"))
-    drfo_mappings.append(m("inc_rec", inc_scope, "$.DateOfEmployment", "IncomeRecord", "employment_date", "IncRec"))
+    # 1. Source Scope (Tax Agent)
+    # Target: Organization
+    source_scope = "$.data.Envelope.Body.InfoIncomeSourcesDRFO2AnswerResponse.SourcesOfIncome[*]"
+    drfo_mappings.append(m("tax_agent", source_scope, "$.TaxAgent", "Organization", "edrpou", "TaxAgent"))
+    drfo_mappings.append(m("tax_agent", source_scope, "$.NameTaxAgent", "Organization", "name", "TaxAgent"))
     
-    # TaxAgent Node
-    drfo_mappings.append(m("tax_agent", inc_scope, "$.TaxAgent", "Organization", "edrpou", "TaxAgent"))
-    drfo_mappings.append(m("tax_agent", inc_scope, "$.NameTaxAgent", "Organization", "name", "TaxAgent"))
+    # 2. Payment Scope (Income Records)
+    # Target: IncomeRecord
+    # We iterate nested IncomeTaxes list
+    payment_scope = "$.data.Envelope.Body.InfoIncomeSourcesDRFO2AnswerResponse.SourcesOfIncome[*].IncomeTaxes[*]"
+    
+    drfo_mappings.append(m("inc_rec", payment_scope, "$.IncomeAccrued", "IncomeRecord", "income_accrued", "IncRec"))
+    drfo_mappings.append(m("inc_rec", payment_scope, "$.IncomePaid", "IncomeRecord", "income_paid", "IncRec"))
+    drfo_mappings.append(m("inc_rec", payment_scope, "$.TaxCharged", "IncomeRecord", "tax_charged", "IncRec"))
+    drfo_mappings.append(m("inc_rec", payment_scope, "$.TaxTransferred", "IncomeRecord", "tax_transferred", "IncRec"))
+    drfo_mappings.append(m("inc_rec", payment_scope, "$.period_year", "IncomeRecord", "year", "IncRec"))
+    drfo_mappings.append(m("inc_rec", payment_scope, "$.period_quarter_month", "IncomeRecord", "period", "IncRec"))
+    drfo_mappings.append(m("inc_rec", payment_scope, "$.SignOfIncomePrivilege", "IncomeRecord", "income_type_code", "IncRec"))
+    # drfo_mappings.append(m("inc_rec", source_scope, "$.DateOfEmployment", "IncomeRecord", "employment_date", "IncRec")) # Skip for now due to scope mismatch
     
     # Person (Subject) - Root level
     root_scope = "$.data.Envelope.Body.InfoIncomeSourcesDRFO2AnswerResponse.Info"
@@ -829,10 +868,52 @@ def init_registers(db: Database):
         "variant_id": "dracs_empty_v1",
         "match_predicate": {
             "all": [
-                {"type": "json_exists", "path": "$.data.Envelope.Body.ArServiceAnswer"}
+                {"type": "json_exists", "path": "$.data.Envelope.Body.ArServiceAnswer"},
+                {"type": "json_exists", "path": "$.data.Envelope.Body.ArServiceAnswer.ErrorInfo"},
+            ],
+            "none": [
+                # If ResultData has children (BirthAct, etc), skip this empty variant
+                {"type": "json_exists", "path": "$.data.Envelope.Body.ArServiceAnswer.ResultData.BirthAct"}
             ]
         },
         "mappings": []  # Empty - no data to extract
+    })
+
+    # DRACS Birth Act
+    dracs_birth_mappings = []
+    # Root scope: For each BirthAct
+    ba_scope = "$.data.Envelope.Body.ArServiceAnswer.ResultData.BirthAct[*]"
+    
+    # Child
+    dracs_birth_mappings.append(m("ba_child", ba_scope, "$.Child.LastName", "Person", "last_name", "Child"))
+    dracs_birth_mappings.append(m("ba_child", ba_scope, "$.Child.FirstName", "Person", "first_name", "Child"))
+    dracs_birth_mappings.append(m("ba_child", ba_scope, "$.Child.MiddleName", "Person", "middle_name", "Child"))
+    dracs_birth_mappings.append(m("ba_child", ba_scope, "$.Child.BirthDate", "Person", "birth_date", "Child"))
+    dracs_birth_mappings.append(m("ba_child", ba_scope, "$.Child.Gender", "Person", "gender", "Child"))
+    
+    # Father
+    dracs_birth_mappings.append(m("ba_father", ba_scope, "$.Father.LastName", "Person", "last_name", "Father"))
+    dracs_birth_mappings.append(m("ba_father", ba_scope, "$.Father.FirstName", "Person", "first_name", "Father"))
+    dracs_birth_mappings.append(m("ba_father", ba_scope, "$.Father.MiddleName", "Person", "middle_name", "Father"))
+    
+    # Mother
+    dracs_birth_mappings.append(m("ba_mother", ba_scope, "$.Mother.LastName", "Person", "last_name", "Mother"))
+    dracs_birth_mappings.append(m("ba_mother", ba_scope, "$.Mother.FirstName", "Person", "first_name", "Mother"))
+    dracs_birth_mappings.append(m("ba_mother", ba_scope, "$.Mother.MiddleName", "Person", "middle_name", "Mother"))
+
+    # Certificate
+    dracs_birth_mappings.append(m("ba_cert", ba_scope, "$.Certificate.Series", "BirthCertificate", "series", "BirthCert"))
+    dracs_birth_mappings.append(m("ba_cert", ba_scope, "$.Certificate.Number", "BirthCertificate", "number", "BirthCert"))
+    dracs_birth_mappings.append(m("ba_cert", ba_scope, "$.Certificate.IssueDate", "BirthCertificate", "issue_date", "BirthCert"))
+    
+    dracs_variants.append({
+        "variant_id": "dracs_birth_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_exists", "path": "$.data.Envelope.Body.ArServiceAnswer.ResultData.BirthAct"}
+            ]
+        },
+        "mappings": dracs_birth_mappings
     })
 
     # ==========================================
@@ -845,18 +926,31 @@ def init_registers(db: Database):
     grantor_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Grantor"
     rep_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Representative"
     veh_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Properties.Property[*]"
+    poa_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Power_of_Attorney"
+    blank_scope = "$.data.Envelope.Body.getProxyGrantorNameOrIDNResponse.getProxyGrantorNameOrIDNResult.Result_data.ResultDataType[*].Notarial_blanks.Blank"
     
     # Persons Response Scopes (New for Linkage)
     persons_scope_grantor = "$.data.Envelope.Body.getProxyPersonsNameOrIDNResponse.getProxyPersonsNameOrIDNResult.Result_data.ResultDataType[*].Grantor"
     persons_scope_rep = "$.data.Envelope.Body.getProxyPersonsNameOrIDNResponse.getProxyPersonsNameOrIDNResult.Result_data.ResultDataType[*].Representative" 
     persons_scope_veh = "$.data.Envelope.Body.getProxyPersonsNameOrIDNResponse.getProxyPersonsNameOrIDNResult.Result_data.ResultDataType[*].Properties.Property[*]"
+    persons_scope_poa = "$.data.Envelope.Body.getProxyPersonsNameOrIDNResponse.getProxyPersonsNameOrIDNResult.Result_data.ResultDataType[*].Power_of_Attorney"
+    persons_scope_blank = "$.data.Envelope.Body.getProxyPersonsNameOrIDNResponse.getProxyPersonsNameOrIDNResult.Result_data.ResultDataType[*].Notarial_blanks.Blank"
 
     # --- Mappings for Grantor Response ---
     erd_mappings.append(m("erd_grantor", grantor_scope, "$.Name", "Person", "full_name", "Grantor"))
     erd_mappings.append(m("erd_grantor", grantor_scope, "$.Code", "Person", "rnokpp", "Grantor"))
     
-    erd_mappings.append(m("erd_rep", rep_scope, "$.Name", "Person", "full_name", "Representative"))
-    erd_mappings.append(m("erd_rep", rep_scope, "$.Code", "Person", "rnokpp", "Representative"))
+    # Power of Attorney - now using correct parent scope
+    erd_mappings.append(m("erd_poa", poa_scope, "$.Notarial_acts_reg_number", "PowerOfAttorney", "poa_id", "PoA"))
+    erd_mappings.append(m("erd_poa", poa_scope, "$.Notarial_acts_reg_number", "PowerOfAttorney", "reg_number", "PoA"))
+    erd_mappings.append(m("erd_poa", poa_scope, "$.Attested_data", "PowerOfAttorney", "date", "PoA"))
+    erd_mappings.append(m("erd_poa", poa_scope, "$.Finished_date", "PowerOfAttorney", "finished_date", "PoA"))
+    erd_mappings.append(m("erd_poa", poa_scope, "$.Witness_name", "PowerOfAttorney", "attested_data", "PoA"))
+
+    # Notarial Blank - using correct scope
+    erd_mappings.append(m("erd_blank", blank_scope, "$.Number", "NotarialBlank", "number", "Blank"))
+    erd_mappings.append(m("erd_blank", blank_scope, "$.Serial", "NotarialBlank", "series", "Blank"))
+    erd_mappings.append(m("erd_blank", blank_scope, "$.Number", "NotarialBlank", "blank_id", "Blank"))
     
     # Filters for ERD (Vehicle vs Real Estate mix)
     # Exclude Real Estate keywords from Vehicle mappings
@@ -917,6 +1011,18 @@ def init_registers(db: Database):
     erd_persons_mappings.append(m("erd_p_vehicle", persons_scope_veh, "$.Property_type", "Vehicle", "property_type", "ProxyVehicle", filter_rules=veh_filter))
     erd_persons_mappings.append(m("erd_p_vehicle_asset", persons_scope_veh, "$.Vht_id", "Vehicle", "asset_type", "ProxyVehicle",
                           transform={"type": "constant", "value": "vehicle"}, filter_rules=veh_filter))
+
+    # Power of Attorney - Persons variant
+    erd_persons_mappings.append(m("erd_poa_p", persons_scope_poa, "$.Notarial_acts_reg_number", "PowerOfAttorney", "poa_id", "PoA"))
+    erd_persons_mappings.append(m("erd_poa_p", persons_scope_poa, "$.Notarial_acts_reg_number", "PowerOfAttorney", "reg_number", "PoA"))
+    erd_persons_mappings.append(m("erd_poa_p", persons_scope_poa, "$.Attested_data", "PowerOfAttorney", "date", "PoA"))
+    erd_persons_mappings.append(m("erd_poa_p", persons_scope_poa, "$.Finished_date", "PowerOfAttorney", "finished_date", "PoA"))
+    erd_persons_mappings.append(m("erd_poa_p", persons_scope_poa, "$.Witness_name", "PowerOfAttorney", "attested_data", "PoA"))
+
+    # Notarial Blank - Persons variant
+    erd_persons_mappings.append(m("erd_blank_p", persons_scope_blank, "$.Number", "NotarialBlank", "number", "Blank"))
+    erd_persons_mappings.append(m("erd_blank_p", persons_scope_blank, "$.Serial", "NotarialBlank", "series", "Blank"))
+    erd_persons_mappings.append(m("erd_blank_p", persons_scope_blank, "$.Number", "NotarialBlank", "blank_id", "Blank"))
 
     # Real Estate (Persons Response)
     erd_persons_mappings.append(m("erd_p_re", persons_scope_veh, "$.Description", "RealEstateProperty", "description", "ProxyProperty", filter_rules=re_filter))
@@ -1118,6 +1224,10 @@ def init_registers(db: Database):
     # Request Node (ID in Header)
     req_dracs_mappings.append(m("req_dracs", dracs_scope, "$.data.Envelope.Header.id", "Request", "request_id", "Req"))
     
+    # DRACS Service
+    req_dracs_mappings.append(m("req_dracs_svc", dracs_scope, "$.data.Envelope.Header.service.serviceCode", "Service", "code", "Svc"))
+    req_dracs_mappings.append(m("req_dracs_svc", dracs_scope, "$.data.Envelope.Header.service.memberCode", "Service", "member_code", "Svc"))
+
     # Subject Person (Husband)
     dracs_body = "$.data.Envelope.Body.ArMarriageDivorceServiceRequest"
     req_dracs_mappings.append(m("req_dracs_subj", dracs_scope, f"{dracs_body}.HusbandSurname", "Person", "last_name", "Subject"))
@@ -1130,15 +1240,43 @@ def init_registers(db: Database):
         "match_predicate": {
             "all": [
                 {"type": "json_regex", "path": "$.data.Envelope.Header.service.serviceCode", "pattern": "Get.*ArBy.*"}
+            ],
+            "none": [
+                 {"type": "json_exists", "path": "$.data.Envelope.Body.ArServiceAnswer"}
             ]
         },
         "mappings": req_dracs_mappings
     })
 
-    # Request XML (DRFO)
-    # ... (Keep existing DRFO mappings)
+    # ... (DRFO) ...
 
-    # Request Arkan (Border)
+    # Request XML (DRFO)
+    req_drfo_mappings = []
+    drfo_body = "$.data.Envelope.Body.InfoIncomeSourcesDRFO2QueryRequest"
+    # Use Header ID for consistency
+    req_drfo_mappings.append(m("req_drfo", "$", "$.data.Envelope.Header.id", "Request", "request_id", "Req"))
+    
+    # DRFO Service
+    req_drfo_mappings.append(m("req_drfo_svc", "$", "$.data.Envelope.Header.service.serviceCode", "Service", "code", "Svc"))
+    req_drfo_mappings.append(m("req_drfo_svc", "$", "$.data.Envelope.Header.service.memberCode", "Service", "member_code", "Svc"))
+
+    # Subject Person
+    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.RNOKPP", "Person", "rnokpp", "Subject"))
+    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.last_name", "Person", "last_name", "Subject"))
+    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.first_name", "Person", "first_name", "Subject"))
+    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.middle_name", "Person", "middle_name", "Subject"))
+    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.date_birth", "Person", "birth_date", "Subject"))
+
+    req_variants.append({
+        "variant_id": "request_drfo_v1",
+        "match_predicate": {
+            "all": [
+                {"type": "json_equals", "path": "$.data.Envelope.Header.service.serviceCode", "value": "InfoIncomeSourcesDRFO2Query"},
+                {"type": "json_exists", "path": "$.data.Envelope.Body.InfoIncomeSourcesDRFO2QueryRequest"}
+            ]
+        },
+        "mappings": req_drfo_mappings
+    })
     req_arkan_mappings = []
     req_arkan_mappings.append(m("req_arkan", "$.data", "$.fioukr", "Person", "full_name", "Subject", transform={"type": "trim"}))
     
@@ -1165,6 +1303,11 @@ def init_registers(db: Database):
     req_erd_mappings.append(m("req_erd_g", erd_grantor_scope, "$.data.Envelope.Body.getProxyGrantorNameOrIDN.Search_nam", "Person", "full_name", "Subject", transform={"type": "trim"}))
     req_erd_mappings.append(m("req_erd_g", erd_grantor_scope, "$.data.Envelope.Body.getProxyGrantorNameOrIDN.Search_code", "Person", "rnokpp", "Subject"))
     
+    # Map Service for ERD Request
+    req_erd_mappings.append(m("req_erd_svc", erd_grantor_scope, "$.data.Envelope.Header.service.serviceCode", "Service", "code", "Svc"))
+    req_erd_mappings.append(m("req_erd_svc", erd_grantor_scope, "$.data.Envelope.Header.service.memberCode", "Service", "member_code", "Svc"))
+    req_erd_mappings.append(m("req_erd_svc", erd_grantor_scope, "$.data.Envelope.Header.service.subsystemCode", "Service", "subsystem_code", "Svc"))
+
     req_variants.append({
         "variant_id": "request_erd_grantor_v1",
         "match_predicate": {
@@ -1181,6 +1324,9 @@ def init_registers(db: Database):
     req_rrp_mappings.append(m("req_rrp", rrp_scope, "$.data.entity", "Request", "service_code", "Req")) # No ID, map entity/service
     req_rrp_mappings.append(m("req_rrp", rrp_scope, "$.data.searchParams.subjectSearchInfo.sbjName", "Person", "full_name", "Subject"))
     req_rrp_mappings.append(m("req_rrp", rrp_scope, "$.data.searchParams.subjectSearchInfo.sbjCode", "Person", "rnokpp", "Subject"))
+    
+    # RRP Service
+    req_rrp_mappings.append(m("req_rrp_svc", rrp_scope, "$.data.entity", "Service", "code", "Svc"))
 
     req_variants.append({
         "variant_id": "request_rrp_json_v1",
@@ -1208,28 +1354,7 @@ def init_registers(db: Database):
         "mappings": req_sr_mappings
     })
 
-    # Request XML (DRFO)
-    req_drfo_mappings = []
-    drfo_body = "$.data.Envelope.Body.InfoIncomeSourcesDRFO2QueryRequest"
-    # Use Header ID for consistency
-    req_drfo_mappings.append(m("req_drfo", "$", "$.data.Envelope.Header.id", "Request", "request_id", "Req"))
-    
-    # Subject Person
-    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.RNOKPP", "Person", "rnokpp", "Subject"))
-    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.last_name", "Person", "last_name", "Subject"))
-    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.first_name", "Person", "first_name", "Subject"))
-    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.middle_name", "Person", "middle_name", "Subject"))
-    req_drfo_mappings.append(m("req_drfo_subj", "$", f"{drfo_body}.person.date_birth", "Person", "birth_date", "Subject"))
 
-    req_variants.append({
-        "variant_id": "request_drfo_v1",
-        "match_predicate": {
-            "all": [
-                {"type": "json_equals", "path": "$.data.Envelope.Header.service.serviceCode", "value": "InfoIncomeSourcesDRFO2Query"}
-            ]
-        },
-        "mappings": req_drfo_mappings
-    })
 
     # Request QueryString (Parsed by Adapter)
     req_qs_mappings = []
