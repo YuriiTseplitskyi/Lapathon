@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  minio:
+    image: minio/minio
+    container_name: nabu_minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./data/minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  create_buckets:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb myminio/court-documents;
+      /usr/bin/mc mb myminio/person-photos;
+      /usr/bin/mc anonymous set public myminio/court-documents;
+      /usr/bin/mc anonymous set public myminio/person-photos;
+      exit 0;
+      "

@@ -8,3 +8,6 @@ nabu_data/
 tmpclaude*
 CORRUPTION_AGENT_PHASE*
 *.json
+data/*
+.DS_Store
+*.ipynb

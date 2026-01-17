@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "schema-updater"
+version = "0.1.0"
+description = "AI Agent for semantic schema alignment"
+authors = ["Your Name"]
+
+[tool.poetry.dependencies]
+fastapi = "^0.100.0"
+uvicorn = "^0.23.0"
+openai = "^1.0.0"
+pydantic = "^2.0.0"
+pydantic-settings = "^2.0.0"
+readme = "README.md"
+requires-python = ">=3.12"
+jsonpath-ng = "^1.7.0"
+dependencies = [
+    "pymongo[srv]>=4.16.0",
+]
