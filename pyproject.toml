@@ -1,0 +1,7 @@
+[tool.uv.workspace]
+members = [
+  "detection_service",
+  "ingestion_job",
+  "profile_creator",
+  "schema_updater"
+]
