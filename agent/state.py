@@ -14,6 +14,7 @@ class CorruptionAgentState(TypedDict):
     This state is shared across the graph:
     - Family builder node populates family_relationships and person_ids
     - Income/assets analyzer node populates income_assets_analysis
+    - Proxy ownership analyzer node populates proxy_ownership_analysis
     """
     # Message history for agent reasoning
     messages: Annotated[List[AnyMessage], add_messages]
@@ -27,3 +28,6 @@ class CorruptionAgentState(TypedDict):
 
     # Income vs Assets Analysis Output
     income_assets_analysis: Optional[Dict[str, Any]]  # Gap analysis and risk scoring
+
+    # Proxy Ownership Analysis Output
+    proxy_ownership_analysis: Optional[Dict[str, Any]]  # Proxy/nominee ownership detection

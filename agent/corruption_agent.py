@@ -6,16 +6,16 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import END, START, StateGraph
 
 from agent.config import AgentConfig
-from agent.nodes import create_family_builder_node, create_income_assets_node
+from agent.nodes import create_family_builder_node, create_income_assets_node, create_proxy_ownership_node
 from agent.state import CorruptionAgentState
 
 
 class CorruptionDetectionAgent:
     """
-    Corruption detection agent with family relationship discovery and income/assets analysis.
+    Corruption detection agent with family relationship discovery, income/assets analysis, and proxy ownership detection.
 
     Architecture:
-    START -> family_builder -> income_assets_analyzer -> END
+    START -> family_builder -> income_assets_analyzer -> proxy_ownership_analyzer -> END
     """
 
     def __init__(self, cfg: AgentConfig):
@@ -40,15 +40,18 @@ class CorruptionDetectionAgent:
         # Create nodes
         family_node = create_family_builder_node(self.cfg)
         income_assets_node = create_income_assets_node(self.cfg)
+        proxy_ownership_node = create_proxy_ownership_node(self.cfg)
 
         # Add nodes to graph
         builder.add_node("family_builder", family_node)
         builder.add_node("income_assets_analyzer", income_assets_node)
+        builder.add_node("proxy_ownership_analyzer", proxy_ownership_node)
 
         # Define sequential edges
         builder.add_edge(START, "family_builder")
         builder.add_edge("family_builder", "income_assets_analyzer")
-        builder.add_edge("income_assets_analyzer", END)
+        builder.add_edge("income_assets_analyzer", "proxy_ownership_analyzer")
+        builder.add_edge("proxy_ownership_analyzer", END)
 
         return builder.compile()
 
@@ -60,7 +63,7 @@ class CorruptionDetectionAgent:
             target_person_query: Name, RNOKPP, or other identifier for the target person.
 
         Returns:
-            Dictionary containing family relationships, income/assets analysis, and person_ids.
+            Dictionary containing family relationships, income/assets analysis, proxy ownership analysis, and person_ids.
         """
         initial_state: CorruptionAgentState = {
             "messages": [HumanMessage(content=f"Analyze corruption patterns for: {target_person_query}")],
@@ -68,6 +71,7 @@ class CorruptionDetectionAgent:
             "family_relationships": None,
             "person_ids": [],
             "income_assets_analysis": None,
+            "proxy_ownership_analysis": None,
         }
 
         result = self.graph.invoke(initial_state)

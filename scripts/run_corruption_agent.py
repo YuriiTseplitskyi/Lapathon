@@ -65,6 +65,7 @@ def main() -> None:
             "family_relationships": result.get("family_relationships"),
             "person_ids": result.get("person_ids"),
             "income_assets_analysis": result.get("income_assets_analysis"),
+            "proxy_ownership_analysis": result.get("proxy_ownership_analysis"),
             # Serialize messages to plain text to keep JSON output safe
             "messages": [
                 getattr(m, "content", str(m)) if m is not None else None
@@ -77,6 +78,7 @@ def main() -> None:
             "family_relationships": result.get("family_relationships"),
             "person_ids": result.get("person_ids"),
             "income_assets_analysis": result.get("income_assets_analysis"),
+            "proxy_ownership_analysis": result.get("proxy_ownership_analysis"),
         }
 
     output_json = json.dumps(output, ensure_ascii=False, indent=2)
@@ -94,6 +96,7 @@ def main() -> None:
         family = output.get("family_relationships", {})
         persons = output.get("person_ids", [])
         income_assets = output.get("income_assets_analysis", {})
+        proxy_ownership = output.get("proxy_ownership_analysis", {})
 
         print()
         print("=" * 60)
@@ -113,6 +116,19 @@ def main() -> None:
                 print(f"  Summary: {income_assets.get('summary')}")
             if income_assets.get("income_assets_ratio"):
                 print(f"  Assets/Income Ratio: {income_assets.get('income_assets_ratio')}x")
+
+        # Show proxy ownership summary
+        if isinstance(proxy_ownership, dict) and proxy_ownership.get("proxy_ownership_detected"):
+            print()
+            print("PROXY OWNERSHIP ANALYSIS:")
+            print(f"  Detected: {proxy_ownership.get('proxy_ownership_detected', False)}")
+            print(f"  Confidence: {proxy_ownership.get('confidence_level', 'N/A')}")
+            if proxy_ownership.get("summary"):
+                print(f"  Summary: {proxy_ownership.get('summary')}")
+            if proxy_ownership.get("proxy_owners"):
+                print(f"  Proxy Owners Found: {len(proxy_ownership.get('proxy_owners', []))}")
+            if proxy_ownership.get("suspected_beneficiaries"):
+                print(f"  Suspected Beneficiaries: {len(proxy_ownership.get('suspected_beneficiaries', []))}")
 
 
 if __name__ == "__main__":
