@@ -83,25 +83,30 @@ Identifier: identifier_id, identifier_value, identifier_type
 
 (Person)-[:HAS_IDENTIFIER]->(Identifier)  
 (Person)-[:HAS_ADDRESS {relationship_type}]->(Address)  
+  - relationship_type values observed: "registered"
+
 (Person)-[:HAS_INCOME]->(IncomeRecord)  
+
 (Person)-[:HAS_RIGHT {role}]->(OwnershipRight)  
+  - role values observed: "owner"
+
 (Person)-[:INVOLVED_IN {role}]->(CivilEvent)  
+  - role values observed: "father", "mother", "child"
+
 (Person)-[:OWNS_VEHICLE {role}]->(Vehicle)  
+  - role values observed: "owner"
 
 (Organization)-[:PAID_INCOME]->(IncomeRecord)  
 (TaxAgent)-[:PAID_INCOME]->(IncomeRecord)  
 (Organization)-[:HAS_RIGHT {role}]->(OwnershipRight)  
+  - role values observed: "owner"
 
 (IncomeRecord)-[:FOR_PERIOD]->(Period)  
-
 (OwnershipRight)-[:RIGHT_TO]->(Property)  
-
 (Property)-[:LOCATED_AT]->(Address)  
-
 (Vehicle)-[:HAS_REGISTRATION]->(VehicleRegistration)  
-
 (CourtCase)-[:IN_COURT]->(Court)  
-(CourtDecision)-[:FOR_CASE]->(CourtCase)  `
+(CourtDecision)-[:FOR_CASE]->(CourtCase)
 
 ## GOAL
 Build exhaustive family network including ALL relationship types:
@@ -114,9 +119,20 @@ Build exhaustive family network including ALL relationship types:
 - **CivilEvent** - fields: event_id, event_type (birth/marriage/death/divorce), date, act_number
 - **Address** - fields: address_id, region, city, street, house
 
-## KEY GRAPH RELATIONSHIPS
-- (Person)-[:INVOLVED_IN]->(CivilEvent) - use to identify parent-child and spouse relationships
-- (Person)-[:HAS_ADDRESS]->(Address) - co-residence indicates family
+## KEY GRAPH RELATIONSHIPS for FAMILY DETECTION
+- (Person)-[:INVOLVED_IN {role}]->(CivilEvent)  
+  Use this to extract parent-child relationships from civil events.  
+  Roles observed in data: "father", "mother", "child".  
+  Interpretation: persons connected to the same CivilEvent can be linked by roles:
+  - father + child => father-child
+  - mother + child => mother-child
+  If an event contains only one parent role, treat the missing parent as unknown (do not invent).
+
+- (Person)-[:HAS_ADDRESS {relationship_type}]->(Address)  
+  Use this to detect co-residence signals.  
+  relationship_type observed in data: "registered" (registered address).  
+  Co-residence at the same registered address is supporting evidence only (LOW by itself).
+
 
 ## CONFIDENCE LEVELS
 
@@ -203,5 +219,12 @@ Example uncertain case:
 4. Always merge duplicate person records (same person with different surnames)
 5. If uncertain about a relationship, DO NOT omit it - include with uncertainty flag
 6. Maximum relationship chain depth: 3 hops from target (grandparent/grandchild level)
+
+## WORKFLOW (expansion order)
+1) Immediate family first: find parents, spouse(s), children, siblings using CivilEvent roles + patronymic/surname evidence.
+2) Extended family from immediate links: from parents → grandparents and their other children (aunts/uncles) → their children (cousins); from children → grandchildren; from siblings → nephews/nieces.
+3) In-laws from immediate links: for each spouse, find their parents/siblings; for each child's spouse or sibling's spouse, add corresponding in-law relations.
+4) Each expansion hop should reuse confirmed immediate relations as anchors; avoid jumping to extended/in-laws without an immediate anchor.
+5) Handle surname changes after marriage: treat records with identical first name + middle name + birth date but different last names as the same person (likely pre-/post-marriage), and link surname changes to marriage CivilEvent evidence.
 """.strip()
 
