@@ -91,6 +91,8 @@ class Neo4jService:
                 return None
 
             data = record.data()
+
+            print(f"data: {data}")
             
             vehicles = [Vehicle(**v) for v in data['vehicles'] if v.get('registration_number')]
 
