@@ -1,7 +1,13 @@
-[project]
+[tool.poetry]
 name = "schema-updater"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.12"
-dependencies = []
+description = "AI Agent for semantic schema alignment"
+authors = ["Your Name"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.100.0"
+uvicorn = "^0.23.0"
+openai = "^1.0.0"
+pydantic = "^2.0.0"
+pydantic-settings = "^2.0.0"

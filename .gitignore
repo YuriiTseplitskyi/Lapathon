@@ -3,3 +3,5 @@ data/*
 *.pdf
 .DS_Store
 __pycache__
+*.json
+*.ipynb
