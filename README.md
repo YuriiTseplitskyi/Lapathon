@@ -37,15 +37,14 @@ Manages the understanding of data structures from various registries.
   * Notifies human operators if a new entity candidate requires verification.
 
 ### 3. Detection Service (`detection_service/`)
-
-The core analytical engine for identifying potential issues.
-
-* **Purpose**: Runs algorithmic searches on the graph and other data sources to find inconsistencies, hidden links, or violations.
-* **Capabilities**:
-  * Detects "hidden" links between entities.
-  * Identifies data inconsistencies.
-  * Flags positive fraud results for review.
-  * **Future**: May include an "Accuracy/Time Balance" logic to decide whether to flag a potential risk (False Positive) or ignore it to save analyst time.
+**Corruption Investigation Agent**
+*   **Purpose**: A LangGraph-based agent that orchestrates complex investigations.
+*   **Workflow**:
+    1.  **Family Builder**: Reconstructs family trees.
+    2.  **Income Analysis**: Compares declared income vs. assets.
+    3.  **Proxy Ownership**: Detects assets hidden under relatives/associates.
+    4.  **Shell Companies**: Uncovers complex ownership structures.
+*   **Output**: Detailed corruption risk reports in Ukrainian.
 
 ### 4. Profile Creator (`profile_creator/`)
 
