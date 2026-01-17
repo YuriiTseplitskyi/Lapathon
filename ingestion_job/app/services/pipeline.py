@@ -155,9 +155,14 @@ class IngestionPipeline:
         self._log("canonicalize", "Starting canonicalization", doc_id=doc_id)
         canonical_obj = self.canonicalizer.canonicalize(raw_doc_obj)
         
+        # FIX: Ensure canonical meta uses the normalized path, not the absolute one from FS read
+        if canonical_obj.meta and "file_path" in canonical_obj.meta:
+            canonical_obj.meta["file_path"] = normalized_file_path
+        
         ingested_doc.canonical = CanonicalContent(
-            hash=canonical_obj.canonical_hash
-            # document_ref left empty for now as we don't store separate blob ref
+            hash=canonical_obj.canonical_hash,
+            meta=canonical_obj.meta,  # Store canonical metadata
+            data=canonical_obj.data   # Store canonical document structure
         )
         
         if canonical_obj.parse_error:
@@ -346,68 +351,72 @@ class IngestionPipeline:
                     # -------------------------------------------------
                     # MinIO Upload Interception
                     # -------------------------------------------------
-                    if prop == "content_base64" and val:
-                        # Handle Court Decision HTML
+                    # -------------------------------------------------
+                    # MinIO Upload Interception
+                    # -------------------------------------------------
+                    if (prop == "content_base64" or prop == "photo_base64") and val:
                         try:
-                            # Decode
-                            html_bytes = base64.b64decode(val)
+                            # Fix Padding
+                            # Base64 length should be multiple of 4. If not, add '=' padding.
+                            val_str = str(val).strip()
+                            missing_padding = len(val_str) % 4
+                            if missing_padding:
+                                val_str += '=' * (4 - missing_padding)
                             
+                            # Validates characters roughly to avoid garbage logging
+                            # But standard b64decode throws binascii.Error if bad chars
+                            decoded_bytes = base64.b64decode(val_str)
+                                   
+                            if prop == "content_base64":
+                                # Handle Court Decision HTML
+                                bucket = self.settings.minio_bucket_court
+                                ext = "html"
+                                ctype = "text/html"
+                                url_prop = "content_url"
+                                hash_prop = "content_hash"
+                            else:
+                                # Handle Person Photo
+                                bucket = self.settings.minio_bucket_photos
+                                ext = "jpg"
+                                ctype = "image/jpeg"
+                                url_prop = "photo_url"
+                                hash_prop = None # Photos don't standardly expose hash prop in schema yet? Actually they do implicitly or we don't care.
+
                             # Generate Filename & Hash
-                            content_hash = hashlib.sha256(html_bytes).hexdigest()
-                            filename = f"{doc_id}_{content_hash[:8]}.html"
+                            content_hash = hashlib.sha256(decoded_bytes).hexdigest()
+                            filename = f"{doc_id}_{content_hash[:8]}.{ext}"
                             
                             # Upload
                             url = self.minio_client.upload_file(
                                 filename=filename, 
-                                data=html_bytes, 
-                                content_type="text/html",
-                                bucket_name=self.settings.minio_bucket_court
+                                data=decoded_bytes, 
+                                content_type=ctype,
+                                bucket_name=bucket
                             )
                             
                             if url:
-                                inst.properties["content_url"] = url
-                                inst.properties["content_hash"] = content_hash
-                                # Snippet for search
-                                try:
-                                    text_snippet = html_bytes.decode("utf-8", errors="ignore")[:500]
-                                    inst.properties["content_snippet"] = text_snippet
-                                except:
-                                    pass
+                                inst.properties[url_prop] = url
+                                if hash_prop:
+                                    inst.properties[hash_prop] = content_hash
                                 
-                            # Clean up heavy base64 from properties to save DB space
-                            inst.properties.pop("content_base64", None)
+                                # Specific logic for HTML snippet
+                                if prop == "content_base64":
+                                    try:
+                                        text_snippet = decoded_bytes.decode("utf-8", errors="ignore")[:500]
+                                        inst.properties["content_snippet"] = text_snippet
+                                    except:
+                                        pass
+                                        
+                                # Specific logic for Photo bool
+                                if prop == "photo_base64":
+                                     inst.properties["has_photo"] = True
                             
                         except Exception as e:
-                            print(f"Failed to process content_base64 for {doc_id}: {e}")
+                            # Log but don't fail the whole document ingestion
+                            print(f"Failed to process {prop} for {doc_id}: {e}")
                         finally:
                              # ALWAYS remove the heavy base64 to prevent DB bloat
-                             inst.properties.pop("content_base64", None)
-
-                    elif prop == "photo_base64" and val:
-                        # Handle Person Photo
-                        try:
-                            photo_bytes = base64.b64decode(val)
-                            
-                            # Generate unique name (using document ID + index if needed, or hash)
-                            photo_hash = hashlib.sha256(photo_bytes).hexdigest()
-                            filename = f"{doc_id}_{photo_hash[:8]}.jpg"
-                            
-                            url = self.minio_client.upload_file(
-                                filename=filename, 
-                                data=photo_bytes, 
-                                content_type="image/jpeg",
-                                bucket_name=self.settings.minio_bucket_photos
-                            )
-                            
-                            if url:
-                                inst.properties["photo_url"] = url
-                                inst.properties["has_photo"] = True
-                            
-                        except Exception as e:
-                            print(f"Failed to process photo_base64 for {doc_id}: {e}")
-                        finally:
-                            # ALWAYS remove the heavy base64
-                            inst.properties.pop("photo_base64", None)
+                             inst.properties.pop(prop, None)
                     # -------------------------------------------------
 
         # Filter out entities with no meaningful properties (Junk Nodes)

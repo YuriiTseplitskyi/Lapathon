@@ -26,8 +26,10 @@ class RawContent(BaseModel):
 
 class CanonicalContent(BaseModel):
     format: str = "canonical_json_v1"
-    document_ref: Optional[str] = None  # ObjectId as hex
+    document_ref: Optional[str] = None  # ObjectId as hex (deprecated)
     hash: str
+    meta: Optional[Dict[str, Any]] = None  # Canonical metadata (registry_code, file_extension, etc.)
+    data: Optional[Any] = None  # Normalized JSON representation of document
 
 
 class DocumentClassification(BaseModel):
