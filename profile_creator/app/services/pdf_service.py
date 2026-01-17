@@ -80,7 +80,6 @@ def generate_pdf(profile: PersonProfile) -> str:
     pdf = PDFReport()
     pdf.add_page()
 
-    # 1. ЗАГАЛЬНА ІНФОРМАЦІЯ
     pdf.section_header("Загальна інформація")
     personal_data = [
         ("Прізвище", profile.last_name),
@@ -95,7 +94,6 @@ def generate_pdf(profile: PersonProfile) -> str:
     for label, val in personal_data:
         pdf.info_row(label, val)
 
-    # 2. ІСТОРІЯ ПІБ (в нас такого ніби поки не було, але на прикладі було)
     if profile.name_history:
         pdf.section_header("Колишні ПІБ")
         w = [90, 40, 60]
@@ -104,7 +102,6 @@ def generate_pdf(profile: PersonProfile) -> str:
         for h in profile.name_history:
             pdf.smart_row([h.old_name, h.event_date, h.event_type], w)
 
-    # 3. РОДИНА
     if profile.family:
         pdf.section_header("Родинні зв'язки")
         w = [65, 20, 25, 80]
@@ -113,7 +110,6 @@ def generate_pdf(profile: PersonProfile) -> str:
         for rel in profile.family:
             pdf.smart_row([rel.full_name, rel.role_str, rel.rnokpp or "---", rel.registry_office], w)
 
-    # 4. НЕРУХОМІСТЬ
     if profile.properties:
         pdf.section_header("Об'єкти нерухомого майна")
         w = [35, 95, 30, 30]
@@ -123,7 +119,6 @@ def generate_pdf(profile: PersonProfile) -> str:
             area_text = f"{p.area} {p.area_unit}" if p.area else "---"
             pdf.smart_row([p.re_type, p.address, area_text, p.share], w)
 
-    # 5. ТРАНСПОРТ
     if profile.vehicles:
         pdf.section_header("Транспортні засоби")
         w = [65, 15, 40, 35, 35]
@@ -134,7 +129,6 @@ def generate_pdf(profile: PersonProfile) -> str:
             role = getattr(v, 'role', 'Власник')
             pdf.smart_row([brand, v.year or "н/д", v.registration_number, v.color or "---", role], w, ['L','C','C','C','L'])
 
-    # 6. АДРЕСИ
     if profile.addresses:
         pdf.section_header("Пов'язані адреси")
         w = [40, 80, 35, 35]
@@ -143,7 +137,6 @@ def generate_pdf(profile: PersonProfile) -> str:
         for addr in profile.addresses:
             pdf.smart_row([addr.region, f"вул. {addr.street or '---'}", addr.house, addr.appartment or "---"], w)
 
-    # 7. КОМПАНІЇ ТА ДОХОДИ
     if profile.companies:
         pdf.section_header("Доходи від організацій (сумарно)")
         w = [100, 40, 50]
@@ -153,7 +146,6 @@ def generate_pdf(profile: PersonProfile) -> str:
             amount = f"{comp.total_amount:,.2f}".replace(',', ' ') + " грн"
             pdf.smart_row([comp.name, comp.edrpou, amount], w, ['L', 'C', 'R'])
 
-    # 8. СУДОВІ СПРАВИ (поки немає, бо загубились звʼязки)
     if profile.court_cases:
         pdf.section_header("Судові справи та рішення")
         for c in profile.court_cases:

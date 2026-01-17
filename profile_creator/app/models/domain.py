@@ -1,5 +1,5 @@
 from typing import List, Optional, Union
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, AliasChoices
 
 class Vehicle(BaseModel):
     make: str = "н/д"
@@ -18,20 +18,20 @@ class Property(BaseModel):
 
 class Income(BaseModel):
     amount: float = 0.0
-    source: str = "Невідомо"
-    year: int
-    type_code: str = ""
+    source: Optional[str] = "Невідомо"  
+    year: Optional[int] = None       
+    type_code: Optional[str] = ""
 
 class CourtCase(BaseModel):
-    case_num: str
-    decision_type: str
-    decision_date: str
-    court_name: str
+    case_num: str = "н/д"
+    decision_type: str = "н/д"
+    decision_date: str = "н/д"
+    court_name: str = "н/д"
 
 class NameHistory(BaseModel):
-    old_name: str
-    event_date: str
-    event_type: str
+    old_name: str = ""
+    event_date: str = ""
+    event_type: str = ""
 
 class AssociatedAddress(BaseModel):
     region: Optional[str] = ""
@@ -47,39 +47,36 @@ class CompanyIncome(BaseModel):
     years_count: Optional[int] = None
 
 class FamilyMember(BaseModel):
-    full_name: str
+    full_name: str = "Невідомо"
     rnokpp: Optional[str] = "---"
-    registry_office: str
-    role_str: str
+    registry_office: str = "---"
+    role_str: str = ""
     person_id: Optional[str] = ""
 
-
 class PersonProfile(BaseModel):
-    first_name: str
-    last_name: str
-    middle_name: str
-    full_name: str
-    rnokpp: str
+    first_name: str = ""
+    last_name: str = ""
+    middle_name: str = ""
+    full_name: str = ""
+    rnokpp: str = "---"
     unzr: Optional[str] = "---"
-    birth_date: Optional[str] = "н/д"
+    
+    birth_date: Optional[str] = Field(
+        default="н/д", 
+        validation_alias=AliasChoices('birth_date', 'date_birth')
+    )
+    
     birth_place: Optional[str] = "н/д"
     gender: Optional[str] = ""
     citizenship: Optional[Union[str, List[str]]] = "Україна"
 
     addresses: List[AssociatedAddress] = []
     companies: List[CompanyIncome] = []
-    
     vehicles: List[Vehicle] = []
     properties: List[Property] = []
     incomes: List[Income] = []
     court_cases: List[CourtCase] = []
     name_history: List[NameHistory] = []
-
     family: List[FamilyMember] = []
 
-
-    @field_validator('citizenship', mode='before')
-    @classmethod
-    def validate_citizenship(cls, v):
-        if isinstance(v, list): return ", ".join(set(v))
-        return v
+    model_config = {"extra": "ignore"} 
